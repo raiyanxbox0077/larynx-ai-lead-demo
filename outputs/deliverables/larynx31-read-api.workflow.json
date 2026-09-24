@@ -1,0 +1,419 @@
+{
+  "id": "9bb3e6b4-3df2-4c2b-9e16-31c1c3f7e531",
+  "name": "Larynx 31 — Read-only Lead API",
+  "nodes": [
+    {
+      "id": "ecb950e4-f0b2-4b83-a27f-aa24797a2790",
+      "name": "API - List Leads",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2.1,
+      "position": [
+        240,
+        200
+      ],
+      "parameters": {
+        "httpMethod": "GET",
+        "path": "larynx-31-api/leads",
+        "authentication": "headerAuth",
+        "responseMode": "responseNode",
+        "options": {}
+      },
+      "webhookId": "728a1e09-53f6-4e3a-a723-ff70b66338c3",
+      "credentials": {
+        "httpHeaderAuth": {
+          "name": "Larynx31 Read API Header Auth"
+        }
+      }
+    },
+    {
+      "id": "ec5ca371-7e11-47f6-bcaa-a90b42fc50b1",
+      "name": "Read Latest Leads (SELECT only)",
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2.6,
+      "position": [
+        520,
+        200
+      ],
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "SELECT jsonb_build_object('lead_id', l.lead_id, 'name', COALESCE(l.data->>'name', 'Lead'), 'phone_e164', CASE WHEN l.data->>'phone_e164' ~ '^\\+91[6-9][0-9]{9}$' THEN '+91 ' || substring(l.data->>'phone_e164' FROM 4 FOR 2) || '•••••' || right(l.data->>'phone_e164', 3) ELSE '••••••••••' END, 'email', l.data->>'email', 'property_interest', l.data->>'property_interest', 'budget_min', l.data->'budget_min', 'budget_max', l.data->'budget_max', 'city', l.data->>'city', 'locality', l.data->>'locality', 'source', l.data->>'source', 'received_at', l.received_at, 'status', l.data->>'status', 'call_run_id', l.data->>'call_run_id', 'call_status', l.data->>'call_status', 'whatsapp_status', l.data->>'whatsapp_status', 'whatsapp_accepted_at', l.data->'whatsapp_accepted_at', 'time_to_call_initiation_ms', l.data->'time_to_call_initiation_ms', 'intent_level', l.data->>'intent_level', 'summary', l.data->>'summary', 'next_followup_at', l.data->'next_followup_at', 'followup_count', l.followup_count, 'do_not_contact', COALESCE((l.data->>'do_not_contact')::boolean, false), 'call_consent', COALESCE((l.data->>'call_consent')::boolean, false), 'whatsapp_opt_in', COALESCE((l.data->>'whatsapp_opt_in')::boolean, false), 'updated_at', l.data->'updated_at', 'preferred_followup_time', l.data->>'preferred_followup_time', 'preferred_channel', l.data->>'preferred_channel', 'objections', COALESCE(l.data->'objections', '[]'::jsonb), 'interests', COALESCE(l.data->'interests', '[]'::jsonb), 'budget_signal', l.data->>'budget_signal', 'next_action', l.data->>'next_action', 'next_action_reason', l.data->>'next_action_reason') AS lead FROM larynx31.leads l ORDER BY l.received_at DESC LIMIT 250",
+        "options": {
+          "connectionTimeout": 5,
+          "queryBatching": "single"
+        }
+      },
+      "credentials": {
+        "postgres": {
+          "name": "Larynx31 Ledger Readonly"
+        }
+      },
+      "alwaysOutputData": true,
+      "retryOnFail": true,
+      "maxTries": 3,
+      "waitBetweenTries": 1000,
+      "onError": "continueErrorOutput"
+    },
+    {
+      "id": "856a8c0c-b2c7-4036-8608-8cc111a12a6f",
+      "name": "Shape List Response",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        800,
+        200
+      ],
+      "parameters": {
+        "mode": "runOnceForAllItems",
+        "language": "javaScript",
+        "jsCode": "const leads = $input.all().map(item => item.json.lead).filter(Boolean);\nreturn [{ json: { body: { leads, count: leads.length } } }];"
+      }
+    },
+    {
+      "id": "8a33845d-caae-45f3-a8ac-abe4ec47c20c",
+      "name": "Return Lead List",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.5,
+      "position": [
+        1080,
+        200
+      ],
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "={{ $json.body }}",
+        "options": {
+          "responseCode": 200,
+          "responseHeaders": {
+            "entries": [
+              {
+                "name": "Cache-Control",
+                "value": "no-store"
+              },
+              {
+                "name": "X-Content-Type-Options",
+                "value": "nosniff"
+              }
+            ]
+          }
+        }
+      }
+    },
+    {
+      "id": "9b107516-121f-497f-a01d-94a1dcf3aa66",
+      "name": "Hide Database Error Details",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        800,
+        410
+      ],
+      "parameters": {
+        "mode": "runOnceForAllItems",
+        "language": "javaScript",
+        "jsCode": "return [{ json: { statusCode: 503, body: { error: 'service_unavailable', message: 'Lead ledger is temporarily unavailable', request_id: String($execution.id) } } }];"
+      }
+    },
+    {
+      "id": "0e9c79c4-3df4-42e8-b4ce-fdf64dc611b0",
+      "name": "Return List Error",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.5,
+      "position": [
+        1080,
+        410
+      ],
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "={{ $json.body }}",
+        "options": {
+          "responseCode": "={{ $json.statusCode }}",
+          "responseHeaders": {
+            "entries": [
+              {
+                "name": "Cache-Control",
+                "value": "no-store"
+              },
+              {
+                "name": "X-Content-Type-Options",
+                "value": "nosniff"
+              }
+            ]
+          }
+        }
+      }
+    },
+    {
+      "id": "03ed7e7b-5e44-4a0a-ab49-a87aeb8c64de",
+      "name": "API - Get Lead Detail",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2.1,
+      "position": [
+        240,
+        620
+      ],
+      "parameters": {
+        "httpMethod": "GET",
+        "path": "larynx-31-api/leads/:lead_id",
+        "authentication": "headerAuth",
+        "responseMode": "responseNode",
+        "options": {}
+      },
+      "webhookId": "bed38cdb-6c85-45ad-a7e8-33f2a74e688e",
+      "credentials": {
+        "httpHeaderAuth": {
+          "name": "Larynx31 Read API Header Auth"
+        }
+      }
+    },
+    {
+      "id": "9d3ce078-620b-4d6f-abc1-9f320b57b31d",
+      "name": "Read One Lead and Activity (SELECT only)",
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2.6,
+      "position": [
+        520,
+        620
+      ],
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "SELECT jsonb_build_object('lead', jsonb_build_object('lead_id', l.lead_id, 'name', COALESCE(l.data->>'name', 'Lead'), 'phone_e164', CASE WHEN l.data->>'phone_e164' ~ '^\\+91[6-9][0-9]{9}$' THEN '+91 ' || substring(l.data->>'phone_e164' FROM 4 FOR 2) || '•••••' || right(l.data->>'phone_e164', 3) ELSE '••••••••••' END, 'email', l.data->>'email', 'property_interest', l.data->>'property_interest', 'budget_min', l.data->'budget_min', 'budget_max', l.data->'budget_max', 'city', l.data->>'city', 'locality', l.data->>'locality', 'source', l.data->>'source', 'received_at', l.received_at, 'status', l.data->>'status', 'call_run_id', l.data->>'call_run_id', 'call_status', l.data->>'call_status', 'whatsapp_status', l.data->>'whatsapp_status', 'whatsapp_accepted_at', l.data->'whatsapp_accepted_at', 'time_to_call_initiation_ms', l.data->'time_to_call_initiation_ms', 'intent_level', l.data->>'intent_level', 'summary', COALESCE(l.data->>'summary', latest.data->>'summary'), 'next_followup_at', l.data->'next_followup_at', 'followup_count', l.followup_count, 'do_not_contact', COALESCE((l.data->>'do_not_contact')::boolean, false), 'call_consent', COALESCE((l.data->>'call_consent')::boolean, false), 'whatsapp_opt_in', COALESCE((l.data->>'whatsapp_opt_in')::boolean, false), 'updated_at', l.data->'updated_at', 'preferred_followup_time', COALESCE(l.data->>'preferred_followup_time', latest.data->>'preferred_followup_time'), 'preferred_channel', COALESCE(l.data->>'preferred_channel', latest.data->>'preferred_channel'), 'objections', COALESCE(l.data->'objections', latest.data->'objections', '[]'::jsonb), 'interests', COALESCE(l.data->'interests', latest.data->'interests', '[]'::jsonb), 'budget_signal', COALESCE(l.data->>'budget_signal', latest.data->>'budget_signal'), 'next_action', COALESCE(l.data->>'next_action', latest.data->>'next_action'), 'next_action_reason', COALESCE(l.data->>'next_action_reason', latest.data->>'next_action_reason')), 'followups', COALESCE((SELECT jsonb_agg(jsonb_build_object('followup_id', f.followup_id, 'lead_id', f.lead_id, 'run_id', f.run_id, 'intent_level', f.data->>'intent_level', 'next_action', f.data->>'next_action', 'next_followup_at', f.due_at, 'channel', f.data->>'preferred_channel', 'attempt_number', f.attempt_number, 'status', f.status, 'summary', f.data->>'summary', 'objections', COALESCE(f.data->'objections', '[]'::jsonb), 'interests', COALESCE(f.data->'interests', '[]'::jsonb), 'budget_signal', f.data->>'budget_signal', 'next_action_reason', f.data->>'next_action_reason') ORDER BY f.attempt_number DESC) FROM larynx31.followups f WHERE f.lead_id=l.lead_id), '[]'::jsonb), 'errors', COALESCE((SELECT jsonb_agg(jsonb_build_object('log_id', e.log_id, 'lead_id', e.data->>'lead_id', 'api', e.data->>'api', 'http_status', e.data->'http_status', 'error_message', e.data->>'error_message', 'attempt_count', e.data->'attempt_count', 'final', COALESCE((e.data->>'final')::boolean, false), 'ambiguous', COALESCE((e.data->>'ambiguous')::boolean, false), 'timestamp', e.data->'timestamp', 'execution_id', e.data->>'execution_id') ORDER BY e.created_at DESC) FROM larynx31.errors e WHERE e.data->>'lead_id'=l.lead_id), '[]'::jsonb)) AS detail FROM larynx31.leads l LEFT JOIN LATERAL (SELECT f.data FROM larynx31.followups f WHERE f.lead_id=l.lead_id ORDER BY f.attempt_number DESC LIMIT 1) latest ON TRUE WHERE l.lead_id = $1 LIMIT 1",
+        "options": {
+          "queryReplacement": "={{ [ $(\"API - Get Lead Detail\").item.json.params.lead_id ] }}",
+          "connectionTimeout": 5,
+          "queryBatching": "single"
+        }
+      },
+      "credentials": {
+        "postgres": {
+          "name": "Larynx31 Ledger Readonly"
+        }
+      },
+      "alwaysOutputData": true,
+      "retryOnFail": true,
+      "maxTries": 3,
+      "waitBetweenTries": 1000,
+      "onError": "continueErrorOutput"
+    },
+    {
+      "id": "ba35129e-5d3b-45ab-adf8-f2bc274e8480",
+      "name": "Shape Detail or Not Found",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        800,
+        620
+      ],
+      "parameters": {
+        "mode": "runOnceForAllItems",
+        "language": "javaScript",
+        "jsCode": "const row = $input.first()?.json;\nif (!row?.detail) return [{ json: { statusCode: 404, body: { error: 'not_found', message: 'Lead not found' } } }];\nreturn [{ json: { statusCode: 200, body: row.detail } }];"
+      }
+    },
+    {
+      "id": "b8ebff4d-299e-46f9-bfa5-b01225c6da53",
+      "name": "Return Lead Detail",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.5,
+      "position": [
+        1080,
+        620
+      ],
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "={{ $json.body }}",
+        "options": {
+          "responseCode": "={{ $json.statusCode }}",
+          "responseHeaders": {
+            "entries": [
+              {
+                "name": "Cache-Control",
+                "value": "no-store"
+              },
+              {
+                "name": "X-Content-Type-Options",
+                "value": "nosniff"
+              }
+            ]
+          }
+        }
+      }
+    },
+    {
+      "id": "95c24ec7-f90f-43ee-9cca-ca033be622aa",
+      "name": "Hide Detail Database Error",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        800,
+        830
+      ],
+      "parameters": {
+        "mode": "runOnceForAllItems",
+        "language": "javaScript",
+        "jsCode": "return [{ json: { statusCode: 503, body: { error: 'service_unavailable', message: 'Lead detail is temporarily unavailable', request_id: String($execution.id) } } }];"
+      }
+    },
+    {
+      "id": "33d166ca-56d1-49a3-a6db-ed40236e1889",
+      "name": "Return Detail Error",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.5,
+      "position": [
+        1080,
+        830
+      ],
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "={{ $json.body }}",
+        "options": {
+          "responseCode": "={{ $json.statusCode }}",
+          "responseHeaders": {
+            "entries": [
+              {
+                "name": "Cache-Control",
+                "value": "no-store"
+              },
+              {
+                "name": "X-Content-Type-Options",
+                "value": "nosniff"
+              }
+            ]
+          }
+        }
+      }
+    },
+    {
+      "id": "abd1e651-d899-4cf7-b1f3-3cf30f79370a",
+      "name": "Read-only API Setup",
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [
+        210,
+        40
+      ],
+      "parameters": {
+        "content": "## Larynx 31 · Read-only API\n\nOnly two authenticated GET routes are exposed. PostgreSQL nodes issue SELECT statements against the real `larynx31` tables. Phone numbers are masked inside SQL before they leave the ledger.\n\nAfter import, select the dedicated `Larynx31 Read API Header Auth` and least-privilege `Larynx31 Ledger Readonly` credentials. Never reuse the provider or intake credential.",
+        "height": 260,
+        "width": 900,
+        "color": 4
+      }
+    }
+  ],
+  "connections": {
+    "API - List Leads": {
+      "main": [
+        [
+          {
+            "node": "Read Latest Leads (SELECT only)",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Read Latest Leads (SELECT only)": {
+      "main": [
+        [
+          {
+            "node": "Shape List Response",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Hide Database Error Details",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Shape List Response": {
+      "main": [
+        [
+          {
+            "node": "Return Lead List",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Hide Database Error Details": {
+      "main": [
+        [
+          {
+            "node": "Return List Error",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "API - Get Lead Detail": {
+      "main": [
+        [
+          {
+            "node": "Read One Lead and Activity (SELECT only)",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Read One Lead and Activity (SELECT only)": {
+      "main": [
+        [
+          {
+            "node": "Shape Detail or Not Found",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Hide Detail Database Error",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Shape Detail or Not Found": {
+      "main": [
+        [
+          {
+            "node": "Return Lead Detail",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Hide Detail Database Error": {
+      "main": [
+        [
+          {
+            "node": "Return Detail Error",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "settings": {
+    "executionOrder": "v1",
+    "timezone": "Asia/Kolkata",
+    "saveDataErrorExecution": "all",
+    "saveDataSuccessExecution": "none",
+    "saveManualExecutions": true
+  },
+  "active": false,
+  "pinData": {},
+  "versionId": "bd7ff64f-48c3-48a3-ae93-78274e7f1d91",
+  "meta": {
+    "templateCredsSetupCompleted": false
+  },
+  "tags": []
+}
