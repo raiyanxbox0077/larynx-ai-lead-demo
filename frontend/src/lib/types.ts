@@ -39,7 +39,7 @@ export interface Lead {
 export interface Followup {
   followup_id: string;
   lead_id: string;
-  run_id?: string;
+  run_id?: string | null;
   intent_level?: string | null;
   next_action?: string;
   next_followup_at?: string | null;
