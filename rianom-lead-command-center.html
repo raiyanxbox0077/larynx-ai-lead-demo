@@ -1,0 +1,1439 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <meta name="theme-color" content="#ffffff">
+  <title>Rianom Realty | Lead Command Center</title>
+  <script src="https://cdn.jsdelivr.net/npm/papaparse@5.4.1/papaparse.min.js"></script>
+  <style>
+    :root{
+      --canvas:#f5f7fa;--surface:#fff;--surface-2:#f8fafc;--ink:#273449;--muted:#69788b;
+      --line:#e4e9f0;--line-strong:#d4dce7;--accent:#416db4;--accent-dark:#31598f;
+      --accent-soft:#eaf0f9;--accent-blue:#3f6ec2;--accent-blue-soft:#edf2fa;
+      --nav:#f8fafc;--nav-muted:#718096;--hot:#ae5a52;--hot-soft:#f3e4e2;
+      --warm:#ad822e;--warm-soft:#f5eddc;--cold:#5a75a3;--cold-soft:#e8edf5;
+      --blue:#557eb5;--blue-soft:#eaf0f8;--danger:#ad6268;--shadow:0 10px 30px rgba(35,52,76,.055);
+      --radius:12px;--font:Inter,ui-sans-serif,system-ui,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;
+      --mono:"SFMono-Regular",Consolas,"Liberation Mono",monospace;
+      --space-1:8px;--space-2:16px;--space-3:24px;--space-4:32px
+    }
+    *{box-sizing:border-box}
+    html{scroll-behavior:smooth}
+    body{margin:0;background:var(--canvas);color:var(--ink);font:14px/1.45 var(--font);-webkit-font-smoothing:antialiased}
+    button,input,select,textarea{font:inherit}
+    button{cursor:pointer}
+    button:focus-visible,a:focus-visible,input:focus-visible,select:focus-visible{outline:3px solid #69b99f;outline-offset:2px}
+    .app{min-height:100vh}
+    .sidebar{position:fixed;inset:0 auto 0 0;width:238px;display:flex;flex-direction:column;background:var(--nav);color:#f4f8f6;padding:24px 15px 16px;z-index:10}
+    .brand{display:flex;align-items:center;gap:11px;padding:4px 10px 28px}
+    .brand-mark{width:31px;height:31px;display:grid;place-items:center;background:var(--accent);color:#fff;border-radius:9px 9px 9px 3px;font-size:15px;font-weight:800;letter-spacing:-.08em}
+    .brand-name{font-size:17px;font-weight:760;letter-spacing:-.055em}
+    .brand-sub{margin-top:1px;color:#a5b7b0;font-size:8px;font-weight:800;letter-spacing:.16em}
+    .workspace-label{padding:10px 11px;color:#71877d;font-size:9px;font-weight:800;letter-spacing:.14em}
+    .nav-list{display:grid;gap:4px}
+    .nav-item{width:100%;height:42px;display:flex;align-items:center;gap:12px;padding:0 12px;border:0;border-radius:8px;background:transparent;color:#aebdb7;text-align:left;font-size:12px;font-weight:620;transition:.16s}
+    .nav-item:hover{background:#ffffff0d;color:#fff}
+    .nav-item.active{background:var(--accent-blue);color:#fff;box-shadow:inset 3px 0 #b9d2ff}
+    .nav-item.active .nav-icon{color:#fff}
+    .nav-icon{width:17px;height:17px;color:#8da199;flex:0 0 auto}
+    .nav-count{margin-left:auto;padding:2px 6px;border-radius:10px;background:#ffffff14;color:#c3d0ca;font:10px var(--mono)}
+    .sidebar-bottom{margin-top:auto}
+    .speed-card{padding:14px;margin:0 2px 14px;border:1px solid #ffffff1b;border-radius:10px;background:#ffffff08}
+    .speed-card-top{display:flex;align-items:center;justify-content:space-between;color:#afc0b9;font-size:9px;font-weight:750;letter-spacing:.06em}
+    .speed-dot{width:7px;height:7px;border-radius:50%;background:#53c59e;box-shadow:0 0 0 4px #53c59e20}
+    .speed-card strong{display:block;margin-top:7px;color:#fff;font-size:24px;letter-spacing:-.06em}
+    .speed-card p{margin:3px 0 0;color:#8fa39a;font-size:9px}
+    .call-window-rail{display:flex;align-items:center;gap:8px;padding:12px 9px 2px;border-top:1px solid #ffffff17;color:#a9bab3;font-size:9px}
+    .call-window-mark{width:6px;height:6px;border-radius:50%;background:#6fd1b0}
+    .call-window-rail b{color:#eaf2ee;font-size:9px;font-weight:760}
+    .main{min-height:100vh;margin-left:238px}
+    .topbar{height:64px;position:sticky;top:0;z-index:8;display:flex;align-items:center;justify-content:flex-end;padding:0 clamp(20px,3.4vw,48px);border-bottom:1px solid var(--line);background:#fff;backdrop-filter:blur(12px)}
+    .crumb{display:flex;align-items:center;gap:9px;color:#8b9992;font-size:11px}
+    .crumb strong{color:#40514a;font-weight:650}
+    .top-right{display:flex;align-items:center;gap:15px}
+    .system-status{display:inline-flex;align-items:center;gap:7px;padding:6px 9px;border:1px solid #cae7dc;border-radius:6px;background:#f1faf6;color:#24775f;font-size:9px;font-weight:800;letter-spacing:.045em}
+    .system-status i{width:6px;height:6px;border-radius:50%;background:#2ca37d;animation:status-pulse 1.5s ease-out infinite}
+    @keyframes status-pulse{0%{box-shadow:0 0 0 0 #2ca37d88;opacity:1}70%{box-shadow:0 0 0 7px #2ca37d00;opacity:.78}100%{box-shadow:0 0 0 0 #2ca37d00;opacity:1}}
+    .region-tag{display:inline-flex;align-items:center;gap:6px;padding:7px 9px;border:1px solid #dce5e0;border-radius:6px;background:#fff;color:#687870;font-size:9px;font-weight:800;letter-spacing:.055em;white-space:nowrap}
+    .region-tag svg{width:12px;height:12px;color:var(--accent)}
+    .org-pill{display:flex;align-items:center;gap:8px;padding-left:14px;border-left:1px solid var(--line);color:#627169;font-size:10px;font-weight:650}
+    .org-avatar{width:25px;height:25px;display:grid;place-items:center;border-radius:7px;background:#eaf2ed;color:#386b56;font-size:9px;font-weight:800}
+    .page{display:none;width:100%;max-width:1550px;margin:auto;padding:var(--space-4) clamp(24px,3.4vw,48px) 56px}
+    .page.active{display:block;animation:fade-in .18s ease-out both}
+    .page.fading-out{display:block;animation:fade-out .14s ease-in both;pointer-events:none}
+    @keyframes fade-in{from{opacity:0}to{opacity:1}}
+    @keyframes fade-out{from{opacity:1}to{opacity:0}}
+    .page-head{display:flex;align-items:flex-start;flex-direction:column;gap:var(--space-1);margin-bottom:var(--space-3)}
+    .page-head h1{margin:0}
+    .page-breadcrumb{margin-bottom:0}
+    .eyebrow{display:flex;align-items:center;gap:7px;color:#7b8b83;font-size:9px;font-weight:820;letter-spacing:.14em;text-transform:uppercase}
+    .eyebrow-mark{width:15px;height:2px;border-radius:2px;background:var(--accent)}
+    h1{margin:7px 0 5px;font-size:27px;font-weight:690;letter-spacing:-.055em;line-height:1.15}
+    .page-subtitle{margin:0;color:#7d8b84;font-size:11px}
+    .head-actions{display:flex;align-items:center;gap:var(--space-1);flex-wrap:wrap;min-height:35px}
+    .btn{min-height:40px;display:inline-flex;align-items:center;justify-content:center;gap:8px;padding:0 16px;border:1px solid var(--line-strong);border-radius:7px;background:#fff;color:#4d5e55;font-size:10px;font-weight:720;transition:background .14s,border .14s,transform .14s}
+    .btn:hover{border-color:#b8cbc1;background:#f9fcfa}
+    .btn:active{transform:translateY(1px)}
+    .btn-primary{border-color:var(--accent);background:var(--accent);color:#fff}
+    .btn-primary:hover{border-color:var(--accent-dark);background:var(--accent-dark)}
+    .btn-quiet{border-color:transparent;background:transparent;color:var(--accent-blue)}
+    .btn-danger{color:#a9433c}
+    .btn svg{width:14px;height:14px;flex:0 0 auto}
+    .hero-speed{display:grid;grid-template-columns:minmax(240px,1.2fr) minmax(230px,1fr) minmax(150px,.6fr);align-items:center;gap:var(--space-3);position:relative;overflow:hidden;margin-bottom:var(--space-2);padding:var(--space-3);border:1px solid #d8e9e2;border-radius:var(--radius);background:linear-gradient(110deg,#fff 0%,#f8fcfa 58%,#eef8f4 100%);box-shadow:var(--shadow)}
+    .hero-speed:after{content:"";position:absolute;right:-55px;top:-120px;width:280px;height:280px;border:1px solid #0c8d7112;border-radius:50%;box-shadow:0 0 0 34px #0c8d7107,0 0 0 68px #0c8d7105;pointer-events:none}
+    .hero-copy{position:relative;z-index:1}
+    .hero-kicker{color:#72857b;font-size:9px;font-weight:820;letter-spacing:.12em;text-transform:uppercase}
+    .hero-number{display:flex;align-items:flex-start;gap:8px;margin-top:4px;color:var(--ink);font-size:51px;font-weight:710;letter-spacing:-.08em;line-height:1}
+    .hero-number small{margin-top:8px;color:#638174;font-size:13px;font-weight:650;letter-spacing:-.01em}
+    .hero-caption{margin:7px 0 0;color:#63766d;font-size:10px}
+    .hero-divider{height:47px;border-left:1px solid #dce8e2}
+    .hero-insight{position:relative;z-index:1;display:flex;align-items:flex-start;gap:11px}
+    .insight-mark{width:28px;height:28px;display:grid;place-items:center;flex:0 0 auto;border-radius:8px;background:var(--accent-soft);color:var(--accent);font-size:13px;font-weight:800}
+    .hero-insight b{display:block;color:#30443a;font-size:11px}
+    .hero-insight p{margin:4px 0 0;color:#7a8981;font-size:9px;line-height:1.55}
+    .sla-box{position:relative;z-index:1;justify-self:end;padding:8px 16px;border:1px solid #d5e7df;border-radius:8px;background:#ffffffb8;text-align:right}
+    .sla-box b{display:block;color:#267b63;font:800 11px var(--mono)}
+    .sla-box span{display:block;margin-top:3px;color:#839188;font-size:8px;text-transform:uppercase;letter-spacing:.08em}
+    .metric-grid{display:grid;grid-template-columns:repeat(5,minmax(0,1fr));gap:var(--space-2);margin-bottom:var(--space-2)}
+    .metric{min-height:94px;padding:var(--space-2);border:1px solid var(--line);border-radius:10px;background:#fff;box-shadow:var(--shadow)}
+    .metric:nth-child(2){border-color:#cbd9ff;background:#f7f9ff}
+    .metric:nth-child(2) .metric-icon{background:#e6edff;color:var(--accent-blue)}
+    .metric:nth-child(2) strong{color:#1e55c5}
+    .metric-head{display:flex;align-items:center;justify-content:space-between;gap:5px;color:#829088;font-size:8px;font-weight:810;letter-spacing:.075em;text-transform:uppercase}
+    .metric-icon{width:23px;height:23px;display:grid;place-items:center;border-radius:7px;background:#eff5f1;color:#4c8b6e}
+    .metric-icon svg{width:13px;height:13px}
+    .metric strong{display:block;margin-top:8px;color:#24352d;font-size:23px;font-weight:680;letter-spacing:-.055em;line-height:1}
+    .metric small{display:block;margin-top:5px;color:#9aa69f;font-size:8px}
+    .source-performance{margin-bottom:var(--space-2)}
+    .source-table-wrap{overflow:auto}
+    .source-table{width:100%;min-width:600px;border-collapse:collapse;text-align:left}
+    .source-table th{padding:0 16px 16px;border-bottom:1px solid #e8eeea;color:#829088;font-size:8px;font-weight:820;letter-spacing:.075em;text-transform:uppercase;white-space:nowrap}
+    .source-table td{height:48px;padding:8px 16px;border-bottom:1px solid #f0f3f1;color:#55655c;font-size:9px;white-space:nowrap}
+    .source-table tr:last-child td{border-bottom:0}
+    .source-table td:first-child{color:#33453b;font-weight:700}
+    .source-table .source-dot{display:inline-block;margin-right:7px;vertical-align:middle}
+    .overview-grid{display:grid;grid-template-columns:minmax(285px,.8fr) minmax(390px,1.2fr);gap:var(--space-2);margin-bottom:var(--space-2)}
+    .panel{min-width:0;border:1px solid var(--line);border-radius:var(--radius);background:#fff;box-shadow:var(--shadow)}
+    .panel-pad{padding:var(--space-2)}
+    .panel-head{display:flex;align-items:flex-start;justify-content:space-between;gap:var(--space-2);margin-bottom:var(--space-2)}
+    .panel-title{margin:0;color:#304239;font-size:12px;font-weight:720;letter-spacing:-.015em}
+    .panel-note{margin:4px 0 0;color:#8a9790;font-size:9px}
+    .panel-action{border:0;background:none;color:var(--accent-blue);font-size:9px;font-weight:750}
+    .panel-action:hover{text-decoration:underline;text-underline-offset:3px}
+    .donut-layout{display:flex;align-items:center;gap:24px;padding:8px}
+    .donut{width:142px;height:142px;position:relative;flex:0 0 auto;display:grid;place-items:center;border-radius:50%;background:conic-gradient(var(--hot) 0deg 100deg,var(--warm) 100deg 245deg,var(--cold) 245deg 360deg)}
+    .donut:before{content:"";position:absolute;inset:14px;border-radius:50%;background:#fff}
+    .donut-center{position:relative;z-index:1;text-align:center}
+    .donut-center strong{display:block;color:#25372f;font-size:27px;font-weight:690;letter-spacing:-.06em}
+    .donut-center span{display:block;color:#8b9991;font-size:8px;text-transform:uppercase;letter-spacing:.08em}
+    .legend{flex:1;display:grid;gap:16px}
+    .legend-row{display:grid;grid-template-columns:9px 1fr auto;align-items:center;gap:8px;color:#728078;font-size:10px}
+    .legend-dot{width:8px;height:8px;border-radius:50%}
+    .legend-row b{color:#394b42;font-size:10px;font-weight:700}
+    .legend-row small{display:block;color:#a0aba4;font-size:8px}
+    .activity-panel{overflow:hidden}
+    .activity-head-right{display:flex;align-items:center;gap:8px;color:#91a097;font-size:8px}
+    .pulse{width:6px;height:6px;border-radius:50%;background:#2fa17c;box-shadow:0 0 0 4px #2fa17c18}
+    .activity-feed{display:grid;max-height:246px;overflow:auto}
+    .activity-item{display:grid;grid-template-columns:26px 1fr auto;align-items:start;gap:8px;padding:8px 0;border-top:1px solid #eff3f0;overflow:hidden}
+    .activity-item:first-child{padding-top:1px;border-top:0}
+    .activity-icon{width:23px;height:23px;display:grid;place-items:center;border-radius:7px;background:#edf6f2;color:#318768}
+    .activity-icon svg{width:12px;height:12px}
+    .activity-icon.call{background:#edf3fa;color:#5580ae}
+    .activity-icon.wa{background:#ebf6ee;color:#56865f}
+    .activity-icon.follow{background:#fff6e6;color:#a77d2d}
+    .activity-text{min-width:0}
+    .activity-text b{display:block;color:#42544a;font-size:9px;font-weight:660}
+    .activity-text span{display:block;margin-top:3px;color:#8b9891;font-size:8px}
+    .activity-item time{padding-top:2px;color:#a0aaa4;font-size:8px;white-space:nowrap}
+    .activity-new{animation:activity-in .45s ease-out both}
+    .activity-exit{animation:activity-out .38s ease-in both;pointer-events:none}
+    @keyframes activity-in{from{opacity:0;transform:translateY(-8px)}to{opacity:1;transform:none}}
+    @keyframes activity-out{from{opacity:1;transform:none;max-height:64px;padding:8px 0}to{opacity:0;transform:translateY(8px);max-height:0;padding-top:0;padding-bottom:0;border-color:transparent}}
+    .journey{padding:var(--space-2)}
+    #page-overview.active{display:flex;flex-direction:column}
+    #page-overview>.page-head{order:0}
+    #page-overview>.hero-speed{order:1}
+    #page-overview>.metric-grid{order:2}
+    #page-overview>.overview-grid{order:3}
+    #page-overview>.source-performance{order:4}
+    #page-overview>.journey{order:5}
+    #page-overview>.page-foot{order:6}
+    .journey-steps{display:grid;grid-template-columns:repeat(5,minmax(0,1fr));gap:0;margin-top:16px}
+    .journey-step{position:relative;padding:0 16px}
+    .journey-step:first-child{padding-left:0}
+    .journey-step:last-child{padding-right:0}
+    .journey-step:not(:last-child):after{content:"";position:absolute;left:28px;right:-2px;top:11px;height:1px;background:#dce9e2}
+    .journey-dot{position:relative;z-index:1;width:22px;height:22px;display:grid;place-items:center;border:1px solid #b6dacb;border-radius:50%;background:#f1faf6;color:#32876c;font-size:8px;font-weight:800}
+    .journey-step b{display:block;margin-top:9px;color:#45574d;font-size:9px}
+    .journey-step p{margin:4px 0 0;color:#8e9b93;font-size:8px;line-height:1.45}
+    .journey-meta{display:flex;align-items:center;gap:8px;margin-top:16px;padding-top:16px;border-top:1px solid #eff3f0;color:#89978f;font-size:8px}
+    .journey-meta b{color:#64786d;font-weight:750}
+    .journey-meta .spacer{flex:1}
+    .page-foot{display:flex;justify-content:space-between;gap:var(--space-2);margin-top:var(--space-2);color:#a0aba4;font-size:8px}
+    .leads-toolbar{display:flex;align-items:center;justify-content:space-between;gap:var(--space-2);margin-bottom:var(--space-2)}
+    .search{height:40px;min-width:225px;display:flex;align-items:center;gap:8px;padding:0 16px;border:1px solid var(--line-strong);border-radius:7px;background:#fff;color:#87948d}
+    .search svg{width:13px;height:13px;flex:0 0 auto}
+    .search input{width:100%;border:0;outline:0;background:none;color:#3a4a42;font-size:9px}
+    .search input::placeholder{color:#a0aaa5}
+    .filter-chips{display:flex;align-items:center;gap:8px;flex-wrap:wrap}
+    .filter-chip{height:28px;padding:0 9px;border:1px solid transparent;border-radius:6px;background:transparent;color:#7e8c84;font-size:9px;font-weight:660}
+    .filter-chip:hover{background:#fff}
+    .filter-chip.active{border-color:#cde3d9;background:#eaf6f1;color:#19745d}
+    .filter-chip .chip-count{margin-left:4px;color:#96a39c;font:8px var(--mono)}
+    .leads-table-wrap{overflow:auto}
+    .leads-table{width:100%;min-width:970px;border-collapse:collapse;text-align:left}
+    .leads-table th{position:sticky;top:0;height:40px;padding:0 16px;border-bottom:1px solid #e8eeea;background:#fafcfb;color:#829088;font-size:8px;font-weight:820;letter-spacing:.075em;text-transform:uppercase;white-space:nowrap}
+    .leads-table th:first-child,.leads-table td:first-child{padding-left:16px}
+    .leads-table td{height:56px;padding:8px 16px;border-bottom:1px solid #f0f3f1;color:#55655c;font-size:9px;white-space:nowrap}
+    .leads-table tr:last-child td{border-bottom:0}
+    .lead-row{cursor:pointer;transition:background .14s,box-shadow .14s,transform .14s}
+    .lead-row:hover{background:#f3f7ff;box-shadow:0 5px 14px rgba(26,55,98,.08);transform:translateY(-1px)}
+    .lead-row:focus-visible{outline:3px solid #69b99f;outline-offset:-3px}
+    .lead-name{display:flex;align-items:center;gap:8px}
+    .lead-avatar{width:27px;height:27px;display:grid;place-items:center;flex:0 0 auto;border-radius:8px;background:#edf4ef;color:#42745d;font-size:8px;font-weight:800}
+    .lead-avatar.coral{background:#f8efeb;color:#a56853}
+    .lead-name b{display:block;max-width:135px;overflow:hidden;color:#33453b;font-size:9px;font-weight:700;text-overflow:ellipsis}
+    .lead-name small{display:block;margin-top:2px;max-width:140px;overflow:hidden;color:#9ba69f;font-size:8px;text-overflow:ellipsis}
+    .phone{font:9px var(--mono);color:#62736a}
+    .source-tag{display:inline-flex;align-items:center;gap:5px}
+    .source-dot{width:5px;height:5px;border-radius:50%;background:#7fae96}
+    .budget{font-variant-numeric:tabular-nums;color:#40544a}
+    .intent{display:inline-flex;align-items:center;gap:5px;padding:5px 9px;border:1px solid transparent;border-radius:999px;font-size:8px;font-weight:780}
+    .intent:before{content:"";width:5px;height:5px;border-radius:50%;background:currentColor}
+    .intent.hot{background:var(--hot);color:#fff}
+    .intent.warm{background:#f2bd3f;color:#2c2107}
+    .intent.cold{background:var(--cold);color:#fff}
+    .status{display:inline-flex;align-items:center;padding:5px 9px;border:1px solid transparent;border-radius:999px;background:#667482;color:#fff;font-size:8px;font-weight:690}
+    .status.called{background:#50667b;color:#fff}
+    .status.follow-up-scheduled{background:#8d4b00;color:#fff}
+    .status.booked{background:#087a49;color:#fff}
+    .status.dnc{background:#80535a;color:#fff}
+    .next-due{color:#667870;font-size:8px}
+    .table-footer{display:flex;align-items:center;justify-content:space-between;padding:8px 16px;border-top:1px solid #edf1ee;color:#8d9992;font-size:8px}
+    .table-empty{padding:35px;text-align:center;color:#87948d}
+    .table-empty b{display:block;color:#55675e;font-size:11px}
+    .table-empty span{display:block;margin-top:4px;font-size:9px}
+    .followup-cadence{display:flex;align-items:center;gap:var(--space-2);margin-bottom:var(--space-2);padding:var(--space-2);border:1px solid #d8e9e2;border-radius:var(--radius);background:var(--accent-soft);color:#426356;font-size:10px;line-height:1.6}
+    .followup-cadence b{flex:0 0 auto;color:#24775f;font-size:9px;text-transform:uppercase;letter-spacing:.06em}
+    .followup-table-wrap{overflow:auto}
+    .followup-table{width:100%;min-width:1180px;border-collapse:collapse;text-align:left}
+    .followup-table th{position:sticky;top:0;height:40px;padding:0 16px;border-bottom:1px solid #e8eeea;background:#fafcfb;color:#829088;font-size:8px;font-weight:820;letter-spacing:.075em;text-transform:uppercase;white-space:nowrap}
+    .followup-table td{height:64px;padding:8px 16px;border-bottom:1px solid #f0f3f1;color:#55655c;font-size:9px;vertical-align:middle}
+    .followup-table tr:last-child td{border-bottom:0}
+    .followup-row{transition:box-shadow .14s,transform .14s}
+    .followup-row:hover{box-shadow:0 5px 14px rgba(26,55,98,.08);transform:translateY(-1px)}
+    .followup-row.overdue td{background:var(--hot-soft)}
+    .followup-row.overdue td:first-child{border-left:3px solid var(--hot)}
+    .followup-lead b,.followup-scheduled b{display:block;color:#34463c;font-size:9px;font-weight:700}
+    .followup-lead small,.followup-scheduled small{display:block;margin-top:4px;color:#929f97;font-size:8px}
+    .followup-reason{max-width:230px;white-space:normal;line-height:1.5}
+    .followup-actions{display:flex;align-items:center;gap:var(--space-1)}
+    .followup-actions .btn{min-height:32px;padding:0 8px;white-space:nowrap}
+    .followup-empty{padding:32px;text-align:center;color:#87948d;font-size:10px}
+    .call-list{display:grid;gap:var(--space-1)}
+    .call-panel{margin-bottom:var(--space-2)}
+    .call-card{display:grid;grid-template-columns:minmax(180px,1.08fr) minmax(100px,.56fr) minmax(240px,1.35fr) minmax(150px,.76fr) auto;align-items:center;gap:16px;padding:16px;border:1px solid var(--line);border-radius:10px;background:#fff;box-shadow:var(--shadow);transition:background .14s,box-shadow .14s,transform .14s}
+    .call-card:hover{background:#fbfcff;box-shadow:0 12px 26px rgba(26,55,98,.09);transform:translateY(-1px)}
+    .call-who{display:flex;align-items:center;gap:8px;min-width:0}
+    .call-who .lead-avatar{width:31px;height:31px}
+    .call-who b{display:block;overflow:hidden;color:#34463c;font-size:10px;text-overflow:ellipsis}
+    .call-who small{display:block;margin-top:3px;color:#99a59e;font-size:8px}
+    .call-date{color:#5e6e65;font-size:9px}
+    .call-date small{display:block;margin-top:3px;color:#9aa59f;font-size:8px}
+    .disposition{display:inline-flex;align-items:center;gap:6px;color:#75837b;font-size:8px;font-weight:700}
+    .disposition i{width:6px;height:6px;border-radius:50%;background:#57a17d}
+    .disposition.no-answer i{background:#d4a33e}
+    .disposition.busy i{background:#c77b55}
+    .call-intent{margin-top:5px}
+    .recording{display:flex;align-items:center;gap:8px;min-width:0}
+    .play-btn{width:26px;height:26px;display:grid;place-items:center;flex:0 0 auto;border:1px solid #dfe9e3;border-radius:50%;background:#fff;color:#348368}
+    .play-btn:hover{border-color:#8dc7ae;background:#f4fbf7}
+    .play-btn svg{width:10px;height:10px}
+    .waveform{position:relative;height:26px;display:flex;align-items:center;gap:2px;flex:1;min-width:60px;overflow:hidden;cursor:pointer}
+    .wavebar{width:3px;min-width:2px;border-radius:3px;background:#b7c9dc;transition:background .12s,height .12s ease}
+    .recording.is-playing .wavebar{animation:wave-height .64s ease-in-out infinite alternate;animation-delay:var(--wave-delay,0s)}
+    @keyframes wave-height{from{height:var(--wave-low,4px)}to{height:var(--wave-high,20px)}}
+    .wave-progress{position:absolute;top:0;bottom:0;left:0;width:0;overflow:hidden;display:flex;align-items:center;gap:2px;pointer-events:none}
+    .wave-progress .wavebar{background:var(--accent-blue)}
+    .duration{width:34px;color:#89968f;font:8px var(--mono);text-align:right}
+    .transcript{grid-column:1/-1;padding:16px;border-top:1px solid #edf1ee;color:#77867e;font-size:9px;line-height:1.6}
+    .transcript b{display:block;margin-bottom:4px;color:#56695e;font-size:8px;text-transform:uppercase;letter-spacing:.07em}
+    .transcript em{color:#44594d}
+    details.call-card{padding-bottom:0}
+    .call-card summary{display:contents;list-style:none}
+    .call-card summary::-webkit-details-marker{display:none}
+    .call-card[open] .transcript{display:block}
+    .call-card:not([open]) .transcript{display:none}
+    .wa-layout{height:auto;min-height:0;display:grid;grid-template-columns:285px minmax(0,1fr);overflow:hidden;border:1px solid var(--line);border-radius:12px;background:#fff;box-shadow:var(--shadow)}
+    .wa-sidebar{display:flex;flex-direction:column;min-height:0;max-height:600px;border-right:1px solid var(--line);background:#fff}
+    .wa-side-head{padding:16px;border-bottom:1px solid #edf1ee}
+    .wa-side-title{display:flex;align-items:center;justify-content:space-between}
+    .wa-side-title h2{margin:0;color:#34473c;font-size:12px;font-weight:720}
+    .wa-side-title span{color:#8f9c95;font-size:8px}
+    .wa-search{height:32px;margin-top:16px}
+    .wa-contacts{max-height:520px;overflow:auto}
+    .wa-contact{width:100%;display:flex;align-items:center;gap:8px;padding:8px 16px;border:0;border-bottom:1px solid #f1f4f2;background:#fff;text-align:left;transition:background .12s}
+    .wa-contact:hover{background:#f7faf8}
+    .wa-contact.active{background:#edf7f2}
+    .wa-contact .lead-avatar{width:34px;height:34px;border-radius:50%;font-size:9px}
+    .wa-contact-copy{min-width:0;flex:1}
+    .wa-contact-top{display:flex;align-items:center;justify-content:space-between;gap:5px}
+    .wa-contact-top b{overflow:hidden;color:#3a4b41;font-size:9px;font-weight:710;text-overflow:ellipsis;white-space:nowrap}
+    .wa-contact-top time{color:#9aa59e;font-size:7px;white-space:nowrap}
+    .wa-preview{display:flex;align-items:center;gap:5px;margin-top:4px}
+    .wa-preview span{overflow:hidden;flex:1;color:#87948d;font-size:8px;text-overflow:ellipsis;white-space:nowrap}
+    .unread{width:6px;height:6px;flex:0 0 auto;border-radius:50%;background:#148e6f}
+    .wa-main{display:flex;flex-direction:column;min-width:0;min-height:0;height:auto;background:#f2f5f2}
+    .wa-chat-head{height:64px;display:flex;align-items:center;gap:8px;padding:0 16px;border-bottom:1px solid #e5ebe7;background:#fff}
+    .wa-chat-head .lead-avatar{width:31px;height:31px;border-radius:50%}
+    .wa-chat-head b{display:block;color:#3c4f44;font-size:10px}
+    .wa-chat-head small{display:block;margin-top:3px;color:#91a097;font-size:8px}
+    .wa-chat-head .spacer{flex:1}
+    .wa-lock{display:flex;align-items:center;gap:5px;color:#8b9991;font-size:8px}
+    .wa-lock svg{width:12px;height:12px}
+    .wa-messages{display:flex;flex:0 0 auto;flex-direction:column;gap:var(--space-1);max-height:min(480px,58vh);overflow:auto;padding:var(--space-2) clamp(16px,4vw,56px)}
+    .wa-day{align-self:center;padding:8px 16px;border:1px solid #e5ebe7;border-radius:5px;background:#fff;color:#87958c;font-size:7px}
+    .bubble{max-width:min(390px,79%);padding:8px;border:1px solid #e5ebe7;border-radius:8px;background:#fff;color:#4d5d54;font-size:9px;line-height:1.5;box-shadow:0 1px 1px #142c2010}
+    .bubble.out{align-self:flex-end;border-color:#d6eadf;background:#e7f4eb}
+    .bubble.in{align-self:flex-start}
+    .bubble-meta{display:flex;align-items:center;justify-content:flex-end;gap:5px;margin-top:4px;color:#93a097;font-size:7px}
+    .ticks{color:#4798d4;font-size:9px;font-weight:800;letter-spacing:-.15em}
+    .wa-compose{display:flex;align-items:center;gap:8px;padding:8px 16px;border-top:1px solid #e1e8e3;background:#fff}
+    .wa-compose input{height:40px;min-width:0;flex:1;padding:0 16px;border:1px solid #e3eae5;border-radius:18px;background:#fafcfb;color:#4e5f55;font-size:9px}
+    .wa-compose button{width:32px;height:32px;display:grid;place-items:center;border:0;border-radius:50%;background:var(--accent);color:#fff}
+    .wa-compose button svg{width:13px;height:13px}
+    .wa-note{padding:0 16px 8px;background:#fff;color:#9aa69f;font-size:7px;text-align:center}
+    .modal-backdrop{position:fixed;inset:0;z-index:30;display:grid;place-items:center;padding:20px;background:#0c1915a8;backdrop-filter:blur(3px)}
+    .modal-backdrop[hidden],.drawer-backdrop[hidden]{display:none}
+    .modal{width:min(720px,100%);max-height:min(90vh,850px);overflow:auto;border:1px solid #dfe8e3;border-radius:14px;background:#fff;box-shadow:0 28px 90px #06150f4d;animation:modal-in .18s ease-out}
+    @keyframes modal-in{from{opacity:0;transform:translateY(8px) scale(.99)}to{opacity:1;transform:none}}
+    .modal-head{display:flex;align-items:flex-start;justify-content:space-between;gap:8px;padding:24px 24px 16px;border-bottom:1px solid #edf1ee}
+    .modal-head h2{margin:0;color:#2f4338;font-size:17px;letter-spacing:-.035em}
+    .modal-head p{margin:8px 0 0;color:#829088;font-size:9px}
+    .close-btn{width:28px;height:28px;display:grid;place-items:center;border:1px solid #e7ede9;border-radius:7px;background:#fff;color:#6d7c73;font-size:16px}
+    .modal-body{padding:16px 24px 24px}
+    .upload-zone{min-height:144px;display:flex;align-items:center;justify-content:center;flex-direction:column;padding:24px;border:1px dashed #a8c9b8;border-radius:10px;background:#f7fbf8;text-align:center;transition:background .14s,border .14s}
+    .upload-zone.dragover{border-color:var(--accent);background:#ecf8f2}
+    .upload-icon{width:32px;height:32px;display:grid;place-items:center;margin-bottom:8px;border-radius:10px;background:#e7f4ee;color:#2a8a6d}
+    .upload-icon svg{width:16px;height:16px}
+    .upload-zone b{color:#4b5d53;font-size:10px}
+    .upload-zone span{margin-top:4px;color:#92a097;font-size:8px}
+    .upload-zone button{margin-top:9px}
+    .upload-error{margin:10px 0 0;color:#b44c45;font-size:9px}
+    .map-section{margin-top:16px}
+    .map-head{display:flex;align-items:center;justify-content:space-between;margin-bottom:8px}
+    .map-head b{color:#4a5d52;font-size:9px}
+    .map-head span{color:#98a39d;font-size:8px}
+    .map-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:8px}
+    .map-field label{display:block;margin-bottom:8px;color:#88958d;font-size:8px;font-weight:720}
+    .map-field select{width:100%;height:32px;padding:0 8px;border:1px solid #e0e8e3;border-radius:6px;background:#fff;color:#596960;font-size:8px}
+    .preview-wrap{max-height:184px;overflow:auto;margin-top:16px;border:1px solid #e8eeea;border-radius:7px}
+    .preview-table{width:100%;border-collapse:collapse;text-align:left}
+    .preview-table th{position:sticky;top:0;padding:7px 8px;background:#f7faf8;color:#8b9991;font-size:7px;text-transform:uppercase;letter-spacing:.06em}
+    .preview-table td{max-width:170px;overflow:hidden;padding:7px 8px;border-top:1px solid #eef2ef;color:#5c6c63;font-size:8px;text-overflow:ellipsis;white-space:nowrap}
+    .privacy-note{display:flex;align-items:flex-start;gap:8px;margin-top:8px;padding:8px;border-radius:6px;background:#f5f8f6;color:#839088;font-size:8px;line-height:1.45}
+    .privacy-note svg{width:12px;height:12px;flex:0 0 auto;color:#5b9a7c}
+    .modal-actions{display:flex;align-items:center;justify-content:space-between;gap:8px;margin-top:16px;padding-top:16px;border-top:1px solid #edf1ee}
+    .modal-actions-left{color:#91a097;font-size:8px}
+    .outreach-progress{display:grid;gap:8px;margin-top:16px}
+    .progress-top{display:flex;align-items:center;justify-content:space-between;color:#75857c;font-size:8px}
+    .progress-track{height:5px;overflow:hidden;border-radius:9px;background:#edf2ef}
+    .progress-track i{height:100%;display:block;border-radius:inherit;background:var(--accent);transition:width .25s}
+    .outreach-rows{max-height:265px;overflow:auto;border:1px solid #e9efeb;border-radius:8px}
+    .outreach-row{display:grid;grid-template-columns:minmax(120px,1fr) 128px auto;align-items:center;gap:8px;padding:8px 16px;border-top:1px solid #f0f3f1}
+    .outreach-row:first-child{border-top:0}
+    .outreach-row b{overflow:hidden;color:#4b5d52;font-size:8px;text-overflow:ellipsis;white-space:nowrap}
+    .outreach-stage{color:#829088;font-size:8px}
+    .outreach-stage.done{color:#328568}
+    .outreach-row small{color:#94a098;font:7px var(--mono);text-align:right}
+    .drawer-backdrop{position:fixed;inset:0;z-index:25;background:#10201a54}
+    .drawer{position:absolute;inset:0 0 0 auto;width:min(760px,100%);overflow:auto;background:#f5f8f6;box-shadow:-18px 0 60px #0b17122e;animation:drawer-in .2s ease-out}
+    @keyframes drawer-in{from{transform:translateX(20px);opacity:.8}to{transform:none;opacity:1}}
+    .drawer-head{position:sticky;top:0;z-index:2;display:flex;align-items:center;justify-content:space-between;padding:16px 24px;border-bottom:1px solid var(--line);background:#fffffff0;backdrop-filter:blur(9px)}
+    .drawer-head span{color:#8a9890;font-size:8px;font-weight:780;letter-spacing:.1em;text-transform:uppercase}
+    .drawer-content{padding:16px 24px 32px}
+    .drawer-profile{display:flex;align-items:flex-start;gap:16px;padding:16px;border:1px solid var(--line);border-radius:10px;background:#fff}
+    .drawer-profile .lead-avatar{width:42px;height:42px;font-size:11px}
+    .drawer-profile-main{min-width:0;flex:1}
+    .drawer-profile h2{margin:0;color:#2e4237;font-size:17px;letter-spacing:-.04em}
+    .drawer-profile p{margin:8px 0 0;color:#87958d;font-size:9px}
+    .drawer-badges{display:flex;gap:8px;margin-top:8px;flex-wrap:wrap}
+    .drawer-details{display:grid;grid-template-columns:repeat(4,1fr);gap:8px;margin-top:8px}
+    .detail-box{padding:8px 16px;border:1px solid var(--line);border-radius:8px;background:#fff}
+    .detail-box span{display:block;color:#93a097;font-size:7px;font-weight:800;letter-spacing:.08em;text-transform:uppercase}
+    .detail-box b{display:block;margin-top:8px;overflow:hidden;color:#4a5e52;font-size:9px;font-weight:660;text-overflow:ellipsis;white-space:nowrap}
+    .drawer-grid{display:grid;grid-template-columns:minmax(0,1.08fr) minmax(240px,.92fr);gap:16px;margin-top:16px}
+    .drawer-panel{padding:16px;border:1px solid var(--line);border-radius:9px;background:#fff}
+    .drawer-panel h3{margin:0;color:#45594d;font-size:9px;font-weight:770}
+    .drawer-panel-sub{margin:8px 0 16px;color:#96a29b;font-size:7px}
+    .timeline{display:grid;gap:8px}
+    .timeline-row{display:grid;grid-template-columns:16px 1fr auto;align-items:start;gap:8px}
+    .timeline-point{position:relative;width:10px;height:10px;margin-top:0;border:2px solid #8dc5a9;border-radius:50%;background:#eff9f3}
+    .timeline-row:not(:last-child) .timeline-point:after{content:"";position:absolute;left:2px;top:8px;width:1px;height:24px;background:#d9e9df}
+    .timeline-row b{display:block;color:#52645a;font-size:8px}
+    .timeline-row small{display:block;margin-top:8px;color:#99a49e;font-size:7px}
+    .timeline-row time{color:#98a49d;font-size:7px;white-space:nowrap}
+    .ai-summary{padding:16px;border-radius:7px;background:#f5f9f6;color:#67776e;font-size:8px;line-height:1.6}
+    .summary-label{display:block;margin-bottom:4px;color:#388466;font-size:7px;font-weight:820;letter-spacing:.08em;text-transform:uppercase}
+    .tag-list{display:flex;gap:8px;flex-wrap:wrap;margin-top:8px}
+    .soft-tag{padding:4px 6px;border:1px solid #e5ece7;border-radius:5px;background:#fff;color:#728079;font-size:7px}
+    .action-callout{margin-top:8px;padding:8px 16px;border:1px solid #d9e9e0;border-radius:7px;background:#f2f9f5}
+    .action-callout span{display:block;color:#789084;font-size:7px;font-weight:800;letter-spacing:.08em;text-transform:uppercase}
+    .action-callout b{display:block;margin-top:4px;color:#247658;font-size:9px}
+    .action-callout p{margin:8px 0 0;color:#7e8e84;font-size:7px}
+    .mini-recording{display:flex;align-items:center;gap:8px;margin-top:16px;padding-top:16px;border-top:1px solid #edf1ee}
+    .mini-recording .waveform{height:21px}
+    .mini-recording .wavebar{width:2px}
+    .mini-recording .duration{width:29px}
+    .mini-chat{display:grid;gap:6px;max-height:128px;overflow:auto;padding:8px;border-radius:7px;background:#f0f4f1}
+    .mini-bubble{max-width:88%;padding:8px;border-radius:7px;background:#fff;color:#65746b;font-size:7px;line-height:1.45}
+    .mini-bubble.out{justify-self:end;background:#e3f1e7}
+    .mini-bubble time{display:block;margin-top:8px;color:#a0aaa4;font-size:6px;text-align:right}
+    .drawer-footer{display:flex;justify-content:flex-end;margin-top:8px}
+    .mobile-nav{display:none}
+    .sr-only{position:absolute;width:1px;height:1px;padding:0;margin:-1px;overflow:hidden;clip:rect(0,0,0,0);white-space:nowrap;border:0}
+    @media(max-width:1180px){
+      .sidebar{width:210px}.main{margin-left:210px}.metric-grid{grid-template-columns:repeat(3,minmax(0,1fr))}
+      .hero-speed{grid-template-columns:minmax(210px,1fr) minmax(200px,1fr) auto}
+      .call-card{grid-template-columns:minmax(170px,1fr) 110px minmax(220px,1.2fr) auto}
+      .call-card .call-intent-wrap{display:none}
+    }
+    @media(max-width:860px){
+      .sidebar{width:66px;padding:20px 8px}.brand{justify-content:center;padding:3px 0 25px}.brand-copy,.workspace-label,.nav-item .nav-label,.nav-count,.speed-card,.call-window-rail{display:none}
+      .nav-item{justify-content:center;padding:0}.nav-icon{width:18px;height:18px}.main{margin-left:66px}
+      .overview-grid{grid-template-columns:1fr}.hero-speed{grid-template-columns:1fr auto}.hero-divider{display:none}.hero-insight{grid-column:1}.sla-box{grid-column:2;grid-row:1}
+      .call-card{grid-template-columns:1fr auto;gap:10px}.call-card .recording{grid-column:1/-1;grid-row:2}.call-card .call-date{grid-column:2;grid-row:1;text-align:right}
+      .journey-steps{grid-template-columns:repeat(3,1fr);row-gap:16px}.journey-step:nth-child(3):after{display:none}
+    }
+    @media(max-width:620px){
+      .sidebar{position:fixed;inset:auto 0 0;width:100%;height:59px;display:flex;flex-direction:row;align-items:center;padding:4px 6px;border-top:1px solid #ffffff18}
+      .brand,.workspace-label,.sidebar-bottom{display:none}.nav-list{width:100%;grid-template-columns:repeat(5,1fr);gap:2px}
+      .nav-item{height:48px;display:flex;flex-direction:column;justify-content:center;gap:2px;border-radius:6px;font-size:7px}
+      .nav-item .nav-label{display:block}.nav-icon{width:16px;height:16px}
+      .main{margin-left:0;padding-bottom:59px}.topbar{height:53px;padding:0 16px}.top-right{gap:8px}.system-status,.org-pill{display:none}.region-tag{padding:6px 7px;font-size:8px}
+      .page{padding:24px 16px 40px}.page-head{align-items:flex-start;flex-direction:column;gap:8px;margin-bottom:24px}.page-breadcrumb{margin-bottom:0}.page-head .head-actions{width:auto}
+      h1{font-size:23px}.page-subtitle{max-width:360px;font-size:10px}
+      .hero-speed{grid-template-columns:1fr auto;gap:16px;padding:16px}.hero-number{font-size:43px}.hero-insight{grid-column:1/-1}
+      .metric-grid{grid-template-columns:repeat(2,minmax(0,1fr));gap:8px}.metric{min-height:83px;padding:16px}.metric strong{font-size:20px}
+      .donut-layout{justify-content:center;gap:16px}.donut{width:120px;height:120px}.donut:before{inset:12px}.legend{max-width:150px}
+      .journey-steps{grid-template-columns:repeat(2,1fr)}.journey-step:nth-child(3):after{display:block}.journey-step:nth-child(2n):after{display:none}
+      .journey-step{padding:0 8px}.journey-step:nth-child(odd){padding-left:0}.journey-step:nth-child(even){padding-right:0}
+      .page-foot{flex-direction:column}.leads-toolbar{align-items:flex-start;flex-direction:column}.search{width:100%}.filter-chips{width:100%}
+      .wa-layout{height:auto;min-height:0;grid-template-columns:94px minmax(0,1fr)}
+      .wa-sidebar{max-height:400px}.wa-contacts{max-height:300px}
+      .wa-side-head{padding:8px}.wa-side-title{align-items:flex-start;flex-direction:column;gap:8px}.wa-side-title h2{font-size:9px}.wa-search{height:32px;margin-top:8px;padding:0 8px}.wa-contact{justify-content:center;padding:8px}.wa-contact .lead-avatar{width:31px;height:31px}.wa-contact-copy{display:none}
+      .wa-chat-head{height:56px;padding:0 8px}.wa-lock{display:none}.wa-messages{max-height:55vh;padding:16px 8px}.bubble{max-width:93%;font-size:8px}.wa-compose{padding:8px}.wa-compose input{font-size:8px}
+      .followup-cadence{align-items:flex-start;flex-direction:column;gap:8px}.followup-actions{align-items:flex-start;flex-direction:column}
+      .drawer-content{padding:16px}.drawer-head{padding:16px}.drawer-details{grid-template-columns:repeat(2,1fr)}.drawer-grid{grid-template-columns:1fr}.modal-backdrop{padding:8px}.modal-head,.modal-body{padding-left:16px;padding-right:16px}
+      .map-grid{grid-template-columns:repeat(2,1fr)}.modal-actions{align-items:flex-start;flex-direction:column}.modal-actions .btn{width:100%}
+    }
+    @media(prefers-reduced-motion:reduce){*,*::before,*::after{scroll-behavior:auto!important;animation-duration:.01ms!important;animation-iteration-count:1!important;transition-duration:.01ms!important}}
+  
+    /* Rianom Realty design system: cool porcelain surfaces, ink navy and a clear blue brand. */
+    :root{--canvas:#f5f7fa;--surface:#fff;--surface-2:#f8fafc;--ink:#273449;--muted:#69788b;--line:#e4e9f0;--line-strong:#d4dce7;--accent:#416db4;--accent-dark:#31598f;--accent-soft:#eaf0f9;--accent-blue:#3f6ec2;--accent-blue-soft:#edf2fa;--nav:#f8fafc;--nav-muted:#718096;--hot:#ae5a52;--hot-soft:#f3e4e2;--warm:#ad822e;--warm-soft:#f5eddc;--cold:#5a75a3;--cold-soft:#e8edf5;--blue:#557eb5;--blue-soft:#eaf0f8;--danger:#ad6268;--shadow:0 2px 5px rgba(35,52,76,.035),0 10px 28px rgba(35,52,76,.055);--radius:14px;--space-1:8px;--space-2:16px;--space-3:24px;--space-4:32px}
+    body{background:var(--canvas);color:var(--ink);font-size:14px;line-height:1.5}.main{min-width:0}.sidebar{background:#f8fafc;color:#29384e;border-right:1px solid #e4e9f0;box-shadow:2px 0 14px rgba(36,55,81,.035)}.brand-mark{background:#416db4;color:#fff;border-radius:9px}.brand-name{color:#27364c}.brand-sub{color:#8390a1}.workspace-label{color:#8290a1}.nav-list{gap:5px}.nav-item{position:relative;color:#65758a;border-radius:9px;transition:background .2s ease,color .2s ease,transform .2s ease,box-shadow .2s ease}.nav-item:hover{background:#edf1f6;color:#344a68;transform:translateX(2px)}.nav-item.active{background:#e8eef8;color:#315b9b;box-shadow:inset 3px 0 #416db4}.nav-icon{color:#77879b}.nav-item.active .nav-icon{color:#416db4}.nav-count{background:#e9eef5;color:#607187}.speed-card{border-color:#e1e7ef;background:#fff;color:#617187;box-shadow:0 2px 8px rgba(35,52,76,.035)}.speed-card-top{color:#718197}.speed-card strong{color:#304c75}.speed-card p{color:#8491a1}.speed-dot,.call-window-mark{background:#57937e}.call-window-rail{border-color:#e2e8ef;color:#718096}.call-window-rail b{color:#42556e}
+    .topbar{height:66px;border-color:var(--line);background:rgba(255,255,255,.94)}.system-status{border-color:#dce8e3;background:#eff6f3;color:#4a7867}.system-status i{background:#5b967f}.region-tag{border-color:#e1e7ee;background:#fff;color:#708097}.region-tag svg{color:var(--accent-blue)}.org-pill{color:#617188;border-color:var(--line)}.org-avatar{background:#e8eef7;color:#41659d}
+    .page{max-width:1600px;padding:32px clamp(24px,3.4vw,48px) 56px}.page-head{gap:9px;margin-bottom:24px}.page-breadcrumb{gap:10px;color:#8390a0;font-size:12px}.page-breadcrumb strong{color:#4d5d73}h1{margin:0;color:#26354a;font-size:31px;font-weight:720;letter-spacing:-.045em;line-height:1.14}.page-subtitle{max-width:720px;color:#68788d;font-size:13px}.head-actions{min-height:40px;padding-top:2px}.eyebrow{color:#75859a}.btn{min-height:40px;padding-inline:15px;border-color:#d7dfe9;border-radius:9px;color:#52637b;font-size:11px;transition:background .2s ease,border-color .2s ease,color .2s ease,transform .2s ease,box-shadow .2s ease}.btn:hover{border-color:#b9c7dc;background:#f7f9fc;box-shadow:0 4px 12px rgba(47,74,112,.08);transform:translateY(-1px)}.btn:active{transform:translateY(0) scale(.985)}.btn-primary{border-color:#416db4;background:#416db4;color:#fff}.btn-primary:hover{border-color:#31598f;background:#31598f}.btn-quiet{color:#416db4}
+    .hero-speed{grid-template-columns:minmax(240px,1.1fr) minmax(250px,1fr) auto;gap:28px;margin-bottom:16px;padding:24px 28px;border:1px solid #e1e7ef;border-radius:16px;background:#fff;box-shadow:var(--shadow)}.hero-speed:after{display:none}.hero-speed:before{content:"";position:absolute;inset:0 auto 0 0;width:4px;background:var(--accent-blue)}.hero-kicker{color:#718198;font-size:10px}.hero-number{font-size:62px;font-weight:740;letter-spacing:-.08em}.hero-number small{color:#7189ac;font-size:15px}.hero-caption{max-width:430px;color:#697a8f;font-size:12px}.hero-insight{gap:12px}.insight-mark{width:34px;height:34px;border-radius:10px;background:#edf2f9;color:#416db4}.hero-insight b{color:#344a66;font-size:13px}.hero-insight p{max-width:440px;color:#738298;font-size:11px;line-height:1.55}.hero-divider{border-color:#e4eaf1}.sla-box{padding:10px 15px;border-color:#e1e7ef;border-radius:10px;background:#f9fbfd}.sla-box b{color:#416db4;font-size:12px}.sla-box span{color:#8290a1;font-size:9px}
+    .metric-grid{gap:12px;margin-bottom:16px;perspective:900px}.metric{min-height:104px;padding:16px;border:1px solid #e4e9f0;border-radius:12px;background:#fff;box-shadow:0 2px 7px rgba(39,57,82,.04);animation:metric-enter .42s cubic-bezier(.2,.75,.25,1) both;transition:transform .2s ease,box-shadow .2s ease,border-color .2s ease}.metric:nth-child(2){border-color:#dae3f1;background:#fff}.metric:nth-child(2) .metric-icon{background:#edf2fa;color:#416db4}.metric:nth-child(2) strong{color:#3f67a6}.metric:nth-child(1){animation-delay:.04s}.metric:nth-child(2){animation-delay:.08s}.metric:nth-child(3){animation-delay:.12s}.metric:nth-child(4){animation-delay:.16s}.metric:nth-child(5){animation-delay:.20s}.metric:hover{transform:translateY(-3px) rotateX(.35deg);border-color:#cdd8e6;box-shadow:0 10px 22px rgba(39,57,82,.09)}@keyframes metric-enter{from{opacity:0;transform:translateY(10px)}to{opacity:1;transform:translateY(0)}}.metric-head{color:#718096;font-size:9px;letter-spacing:.07em}.metric-icon{width:28px;height:28px;border-radius:9px;background:#f0f3f7;color:#6d86a9}.metric-icon svg{width:15px;height:15px}.metric strong{margin-top:9px;color:#2c3d54;font-size:27px}.metric small{margin-top:6px;color:#8290a1;font-size:9px}
+    .panel{border-color:#e3e9f0;border-radius:14px;background:#fff;box-shadow:var(--shadow);transition:box-shadow .2s ease,border-color .2s ease}.panel:hover{border-color:#d5deea;box-shadow:0 8px 24px rgba(39,57,82,.07)}.page.active .panel{animation:surface-enter .36s cubic-bezier(.2,.75,.25,1) both}.page.active#page-overview>.source-performance{animation-delay:.14s}.page.active#page-overview>.overview-grid>.panel:first-child{animation-delay:.18s}.page.active#page-overview>.overview-grid>.panel:last-child{animation-delay:.22s}.page.active#page-overview>.journey{animation-delay:.26s}@keyframes surface-enter{from{opacity:0;transform:translateY(8px) scale(.995)}to{opacity:1;transform:translateY(0) scale(1)}}.panel-pad{padding:20px}.panel-head{gap:16px;margin-bottom:16px}.panel-title{color:#33465f;font-size:14px;font-weight:730;letter-spacing:-.02em}.panel-note{margin-top:4px;color:#8190a2;font-size:10px}.panel-action{color:#416db4;font-size:10px}.overview-grid{grid-template-columns:minmax(290px,.82fr) minmax(400px,1.18fr);gap:16px;margin-bottom:16px}.donut{box-shadow:0 5px 18px rgba(42,60,88,.09)}.donut-center strong{color:#304158}.donut-center span{color:#8290a1}.legend-row{color:#728197}.legend-row b{color:#40536d}.legend-row small{color:#8996a6}.activity-head-right{color:#8290a1}.pulse{background:#5b967f;box-shadow:0 0 0 4px rgba(91,150,127,.14)}.activity-item{border-color:#edf0f4}.activity-icon{background:#edf2f8;color:#5476a5}.activity-icon.call{background:#eaf0f8;color:#5b789e}.activity-icon.wa{background:#eaf3ef;color:#5a8a73}.activity-icon.follow{background:#f5f0e4;color:#9c7b40}.activity-text b{color:#43566f;font-size:10px}.activity-text span{color:#8290a1;font-size:9px}.activity-item time{color:#8a97a7;font-size:9px}
+    .source-performance,.journey{border-color:#e3e9f0}.source-table th,.leads-table th,.followup-table th{color:#77879b;background:#f8fafc;font-size:9px;letter-spacing:.075em}.source-table td,.leads-table td,.followup-table td{border-color:#edf0f4;color:#596b82}.source-table td:first-child,.lead-name b,.followup-lead b,.followup-scheduled b{color:#344a65}.journey{padding:20px}.journey-step:not(:last-child):after{background:#dce4ee}.journey-dot{border-color:#cdd8e7;background:#edf2f8;color:#52719f}.journey-step b{color:#4b5f79;font-size:10px}.journey-step p{color:#8491a2;font-size:9px}.journey-meta{border-color:#edf0f4;color:#7e8da0;font-size:9px}.journey-meta b{color:#516680}.page-foot{color:#8491a2;font-size:9px}
+    .search{border-color:#dbe2eb;border-radius:9px;background:#fff;color:#7c8ba0}.search:focus-within{border-color:#8ba7d0;box-shadow:0 0 0 3px rgba(65,109,180,.11)}.search input{color:#354860;font-size:10px}.search input::placeholder{color:#9aa6b5}.filter-chip{border-radius:8px;color:#75849a;font-size:10px;transition:background .18s ease,color .18s ease,border-color .18s ease,transform .18s ease}.filter-chip:hover{background:#f2f5f9;color:#465c79;transform:translateY(-1px)}.filter-chip.active{border-color:#d5e1f2;background:#eaf0f9;color:#315b9b}.filter-chip .chip-count{color:#8b98a8}.leads-table th,.followup-table th{border-color:#e8edf3;background:#f8fafc}.leads-table td,.followup-table td{border-color:#edf0f4}.lead-avatar{background:#e9eff6;color:#57749c}.lead-avatar.coral{background:#f3eae6;color:#9b6c61}.lead-name small,.followup-lead small,.followup-scheduled small{color:#8693a3}.phone{color:#60728a}.budget{color:#435974}.source-dot{background:#8198b5}.lead-row{transition:background .18s ease,box-shadow .18s ease,transform .18s ease}.lead-row:hover{background:#f5f8fc;box-shadow:0 5px 15px rgba(41,64,99,.07);transform:translateY(-1px)}
+    .intent{border:0;border-radius:999px;font-size:9px;font-weight:760}.intent:before{opacity:.75}.intent.hot{background:#f2dfdc;color:#944b44}.intent.warm{background:#f4ecd9;color:#81621f}.intent.cold{background:#e7edf5;color:#4a638a}.status{border:0;border-radius:999px;font-size:9px;font-weight:720}.status.called{background:#e7edf5;color:#4a6382}.status.follow-up-scheduled{background:#f3ead7;color:#896825}.status.booked{background:#e3efe9;color:#3f765f}.status.dnc{background:#efe6e7;color:#845b61}.status:not(.called):not(.follow-up-scheduled):not(.booked):not(.dnc){background:#edf0f4;color:#617188}
+    .followup-cadence{border-color:#dce5ef;border-radius:12px;background:#f1f5fa;color:#536980;font-size:11px}.followup-cadence b{color:#41679f}.followup-row{transition:background .18s ease,box-shadow .18s ease,transform .18s ease}.followup-row:hover{box-shadow:0 6px 16px rgba(41,64,99,.075);transform:translateY(-1px)}.followup-row.overdue td{background:#f7efed}.followup-row.overdue td:first-child{border-left-color:#bc7269}.followup-reason{color:#677990}.followup-actions .btn{font-size:10px}
+    .call-card{border-color:#e3e9f0;border-radius:12px;background:#fff;box-shadow:0 2px 8px rgba(39,57,82,.04);transition:background .2s ease,box-shadow .2s ease,transform .2s ease}.call-card:hover{background:#fbfcfe;box-shadow:0 9px 22px rgba(39,57,82,.09);transform:translateY(-2px)}.call-who b{color:#344a65;font-size:11px}.call-who small,.call-date small{color:#8492a3;font-size:9px}.call-date{color:#5d7089;font-size:10px}.disposition{color:#718096;font-size:9px}.disposition i{background:#68917e}.disposition.no-answer i{background:#b99a5c}.disposition.busy i{background:#b57c72}.play-btn{border-color:#dce4ed;color:#4e75ab;transition:background .18s ease,border-color .18s ease,transform .18s ease}.play-btn:hover{border-color:#aabbd1;background:#edf3fa;transform:scale(1.06)}.wavebar{background:#9aacc2}.wave-progress .wavebar{background:#416db4}.duration{color:#76869a}.transcript{border-color:#edf0f4;color:#718096}.transcript b{color:#60738d}.transcript em{color:#415773}
+    .wa-layout{grid-template-columns:300px minmax(0,1fr);border-color:#e2e8ef;border-radius:14px;background:#fff;box-shadow:var(--shadow)}.wa-sidebar{border-color:#e4e9f0;background:#fff}.wa-side-head{border-color:#e9edf2}.wa-side-title h2{color:#3a4f6a;font-size:13px}.wa-side-title span{color:#8794a4;font-size:9px}.wa-contact{border-color:#edf0f4;transition:background .18s ease,transform .18s ease}.wa-contact:hover{background:#f7f9fc}.wa-contact.active{background:#eef3fa}.wa-contact-top b{color:#40546e;font-size:10px}.wa-contact-top time{color:#8996a6;font-size:8px}.wa-preview span{color:#78889d;font-size:9px}.unread{background:#5b8f7a}.wa-main{background:#f5f7fa}.wa-chat-head{border-color:#e5eaf0;background:#fff}.wa-chat-head b{color:#40546e;font-size:11px}.wa-chat-head small{color:#8794a4;font-size:9px}.wa-lock{color:#8290a1;font-size:9px}.wa-messages{background:#f5f7fa}.wa-day{border-color:#e4e9ef;border-radius:8px;color:#7d8ca0}.bubble{border-color:#e2e7ee;border-radius:11px;color:#4b5f78;box-shadow:0 2px 5px rgba(38,55,79,.045);font-size:10px}.bubble.out{border-color:#d7e6dc;background:#eaf3ee}.bubble-meta{color:#8a97a6;font-size:8px}.ticks{color:#5d8db8}.wa-compose{border-color:#e2e8ef}.wa-compose input{border-color:#dfe5ec;background:#fbfcfd;color:#41566f;font-size:10px}.wa-compose button{background:#416db4;transition:background .2s ease,transform .2s ease}.wa-compose button:hover{background:#31598f;transform:translateY(-1px)}.wa-note{color:#8b97a6}
+    .modal,.drawer{border-color:#dfe6ee;background:#fff;box-shadow:0 24px 70px rgba(28,43,63,.2)}.modal-head,.drawer-head{border-color:#e8edf2}.modal-head h2,.drawer-profile h2{color:#2f425c}.modal-head p,.drawer-profile p{color:#76869a}.close-btn{border-color:#e2e8ee;color:#667991;transition:background .18s ease,transform .18s ease}.close-btn:hover{background:#f3f6f9;transform:rotate(3deg)}.upload-zone{border-color:#b7c6d9;background:#f8fafc}.upload-zone.dragover{border-color:#416db4;background:#edf3fa}.upload-icon{background:#e9eff7;color:#5578ab}.upload-zone b,.map-head b{color:#465a74}.upload-zone span,.map-head span{color:#8694a4}.map-field label{color:#718198}.map-field select{border-color:#dce3ec;color:#50647d}.preview-wrap,.outreach-rows{border-color:#e6ebf1}.preview-table th{background:#f4f7fa;color:#77879a}.preview-table td{border-color:#ebeff3;color:#566a83}.privacy-note{background:#f2f6fa;color:#657891}.privacy-note svg{color:#638477}.progress-track{background:#e9eef3}.progress-track i{background:#416db4}.outreach-row{border-color:#edf0f4}.outreach-row b{color:#4b6079}.outreach-stage{color:#708198}.drawer{background:#f5f7fa}.drawer-head{background:rgba(255,255,255,.96)}.drawer-profile,.drawer-panel,.detail-box{border-color:#e3e9ef;background:#fff}.drawer-panel h3{color:#4a5f79}.drawer-panel-sub,.detail-box span{color:#8391a2}.detail-box b{color:#4b6078}.timeline-point{border-color:#a7bfd3;background:#eef3f7}.timeline-row:not(:last-child) .timeline-point:after{background:#dce5ed}.ai-summary{background:#f3f6f9;color:#63758d}.summary-label{color:#4c709f}.soft-tag{border-color:#e4e9ef;color:#63758b}.action-callout{border-color:#dce5ee;background:#f1f5f8}.action-callout span,.action-callout p{color:#73859a}.action-callout b{color:#4a7398}.mini-chat{background:#f2f5f8}.mini-bubble{color:#5c7088}.mini-bubble.out{background:#e8f2ec}
+    button,a,[role=button],summary,[data-wave]{-webkit-tap-highlight-color:transparent}button:focus-visible,a:focus-visible,input:focus-visible,select:focus-visible{outline:3px solid rgba(65,109,180,.34);outline-offset:2px}.page.active{animation:page-enter .24s ease both}@keyframes page-enter{from{opacity:0;transform:translateY(4px)}to{opacity:1;transform:translateY(0)}}
+    @media(max-width:1180px){.hero-speed{grid-template-columns:minmax(220px,1fr) minmax(220px,1fr) auto}.overview-grid{grid-template-columns:minmax(260px,.85fr) minmax(350px,1.15fr)}}
+    @media(max-width:860px){.sidebar{width:66px;padding-inline:8px}.brand{justify-content:center;padding-inline:0}.brand>div:not(.brand-mark){display:none}.nav-item{justify-content:center;padding-inline:0}.nav-label,.workspace-label,.nav-count,.speed-card,.call-window-rail{display:none}.main{margin-left:66px}.overview-grid{grid-template-columns:1fr}.hero-speed{grid-template-columns:minmax(0,1fr) auto}.hero-insight{grid-column:1/-1}.metric-grid{grid-template-columns:repeat(3,minmax(0,1fr))}.call-card{grid-template-columns:minmax(0,1fr) auto}.call-card .recording-placeholder{grid-column:1/-1;grid-row:2}}
+    @media(max-width:620px){.sidebar{position:fixed;inset:auto 0 0;width:100%;height:60px;flex-direction:row;align-items:center;padding:4px 6px;border-top:1px solid #e2e8ef;border-right:0;box-shadow:0 -3px 16px rgba(35,52,76,.06)}.brand,.sidebar-bottom{display:none}.nav-list{width:100%;grid-template-columns:repeat(5,1fr);gap:3px}.nav-item{height:48px;display:flex;flex-direction:column;justify-content:center;gap:3px;border-radius:8px;font-size:8px}.nav-label{display:block}.nav-icon{width:16px;height:16px}.main{margin-left:0;padding-bottom:60px}.topbar{height:54px;padding-inline:14px}.system-status,.org-pill{display:none}.region-tag{padding:6px 8px;font-size:8px}.page{padding:24px 15px 36px}.page-head{gap:8px;margin-bottom:20px}h1{font-size:26px}.page-subtitle{font-size:11px}.hero-speed{grid-template-columns:minmax(0,1fr) auto;gap:14px;padding:18px}.hero-number{font-size:51px}.hero-number small{margin-top:11px;font-size:12px}.hero-insight{grid-column:1/-1}.hero-insight p{font-size:10px}.sla-box{padding:8px 10px}.metric-grid{grid-template-columns:repeat(2,minmax(0,1fr));gap:8px}.metric{min-height:92px;padding:12px}.metric strong{font-size:23px}.metric small{font-size:8px}.panel-pad{padding:15px}.panel-title{font-size:13px}.panel-note{font-size:9px}.donut-layout{justify-content:center;gap:16px}.donut{width:120px;height:120px}.donut:before{inset:12px}.legend{gap:12px}.legend-row{font-size:10px}.legend-row b{font-size:10px}.legend-row small{font-size:8px}.activity-item{grid-template-columns:28px minmax(0,1fr) auto;gap:7px}.activity-text b{font-size:10px}.activity-text span{font-size:9px}.activity-item time{font-size:8px}.journey{padding:15px}.journey-steps{grid-template-columns:repeat(2,1fr);row-gap:16px}.journey-step{padding-inline:8px}.journey-step:nth-child(2n):after{display:none}.journey-step:nth-child(odd){padding-left:0}.journey-step:nth-child(even){padding-right:0}.journey-step b{font-size:10px}.journey-step p{font-size:9px}.journey-meta{flex-wrap:wrap;font-size:8px}.journey-meta .spacer{display:none}.page-foot{align-items:flex-start;flex-direction:column;font-size:8px}.leads-toolbar{align-items:stretch;flex-direction:column}.search{width:100%;min-width:0}.filter-chips{width:100%}.filter-chip{height:31px;padding-inline:8px;font-size:9px}.wa-layout{grid-template-columns:82px minmax(0,1fr);min-height:450px}.wa-sidebar{max-height:540px}.wa-contacts{max-height:450px}.wa-side-head{padding:9px 7px}.wa-side-title{align-items:flex-start;flex-direction:column;gap:5px}.wa-side-title h2{font-size:9px}.wa-side-title span{font-size:7px}.wa-search{height:30px;margin-top:7px;padding-inline:7px}.wa-contact{justify-content:center;padding:8px 4px}.wa-contact .lead-avatar{width:32px;height:32px}.wa-contact-copy{display:none}.wa-chat-head{height:58px;padding-inline:8px}.wa-chat-head .lead-avatar{width:32px;height:32px}.wa-chat-head b{font-size:10px}.wa-chat-head small{font-size:8px}.wa-lock{display:none}.wa-messages{max-height:400px;padding:12px 8px;gap:8px}.bubble{max-width:95%;padding:8px 9px;font-size:9px}.bubble-meta{font-size:7px}.wa-compose{padding:7px}.wa-compose input{height:36px;padding-inline:10px;font-size:9px}.wa-compose button{width:32px;height:32px}.followup-cadence{align-items:flex-start;flex-direction:column;gap:8px;padding:13px;font-size:10px}.followup-actions{align-items:flex-start;flex-direction:column}.drawer-content{padding:14px}.drawer-head{padding:14px}.drawer-details{grid-template-columns:repeat(2,1fr)}.drawer-grid{grid-template-columns:1fr}.modal-backdrop{padding:8px}.modal-head,.modal-body{padding-inline:14px}.map-grid{grid-template-columns:repeat(2,1fr)}.modal-actions{align-items:stretch;flex-direction:column}.modal-actions .btn{width:100%}}
+    @media(prefers-reduced-motion:reduce){*,*::before,*::after{scroll-behavior:auto!important;animation-duration:.01ms!important;animation-iteration-count:1!important;transition-duration:.01ms!important}}
+
+    .analytics-panel{overflow:hidden}.analytics-top{align-items:center}.analytics-toolbar{display:flex;align-items:center;gap:10px;flex-wrap:wrap}.analytics-modes{display:flex;align-items:center;gap:3px;padding:3px;border:1px solid #e3e9f0;border-radius:9px;background:#f8fafc}.analytics-mode{min-height:31px;padding:0 11px;border:0;border-radius:7px;background:transparent;color:#75849a;font-size:10px;font-weight:680;transition:background .18s ease,color .18s ease,box-shadow .18s ease,transform .18s ease}.analytics-mode:hover{color:#3f5c83;background:#eef2f8}.analytics-mode.active{background:#fff;color:#315b9b;box-shadow:0 1px 4px rgba(39,57,82,.12)}.analytics-mode:active{transform:scale(.97)}.analytics-filter{display:flex;align-items:center;gap:7px;color:#8290a1;font-size:9px;font-weight:680}.analytics-filter select{min-height:37px;padding:0 32px 0 11px;border:1px solid #dce3ec;border-radius:8px;background:#fff;color:#4d607a;font-size:10px;cursor:pointer}.analytics-meta{display:flex;align-items:center;justify-content:space-between;gap:12px;margin:8px 0 4px;color:#8190a2;font-size:10px}.analytics-meta b{color:#496383;font-weight:670}.analytics-chart-wrap{position:relative;min-height:235px;margin:0 -4px}.analytics-svg{display:block;width:100%;height:250px;overflow:visible}.analytics-svg text{font-family:var(--font);font-size:10px;fill:#8a97a7}.chart-grid{stroke:#edf0f4;stroke-width:1;vector-effect:non-scaling-stroke}.chart-axis{stroke:#e2e8ef;stroke-width:1;vector-effect:non-scaling-stroke}.chart-area{fill:url(#analytics-fill);opacity:.82;animation:chart-area-in .6s ease both}.chart-line{fill:none;stroke:#416db4;stroke-width:2.7;stroke-linecap:round;stroke-linejoin:round;stroke-dasharray:1;stroke-dashoffset:1;animation:chart-line-in .9s .08s ease forwards;vector-effect:non-scaling-stroke}.chart-point{fill:#fff;stroke:#416db4;stroke-width:2.5;cursor:pointer;opacity:0;transform-box:fill-box;transform-origin:center;animation:chart-point-in .3s ease forwards;animation-delay:var(--point-delay,0ms);transition:r .16s ease,stroke-width .16s ease,fill .16s ease;vector-effect:non-scaling-stroke}.chart-point:hover,.chart-point:focus{r:6.5;stroke-width:3.5;fill:#eaf0f9;outline:none}.chart-empty{display:grid;min-height:220px;place-items:center;color:#8592a3;font-size:12px}.analytics-stats{display:grid;grid-template-columns:repeat(5,minmax(0,1fr));margin-top:7px;padding-top:16px;border-top:1px solid #edf0f4}.analytics-stat{min-width:0;padding:0 12px;border-right:1px solid #edf0f4;animation:analytics-stat-in .36s cubic-bezier(.2,.75,.25,1) both}.analytics-stat:first-child{padding-left:2px}.analytics-stat:last-child{border-right:0}.analytics-stat span{display:block;color:#8391a2;font-size:9px;font-weight:680;letter-spacing:.045em;text-transform:uppercase}.analytics-stat strong{display:block;margin-top:6px;color:#334b6b;font-size:19px;font-weight:720;letter-spacing:-.055em;white-space:nowrap}.analytics-stat small{display:block;margin-top:3px;color:#96a1af;font-size:9px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}.analytics-panel .panel-note{max-width:520px}@keyframes chart-line-in{to{stroke-dashoffset:0}}@keyframes chart-area-in{from{opacity:0}to{opacity:.82}}@keyframes chart-point-in{from{opacity:0;transform:scale(.5)}to{opacity:1;transform:scale(1)}}@keyframes analytics-stat-in{from{opacity:0;transform:translateY(5px)}to{opacity:1;transform:translateY(0)}}.analytics-stat:nth-child(1){animation-delay:.02s}.analytics-stat:nth-child(2){animation-delay:.07s}.analytics-stat:nth-child(3){animation-delay:.12s}.analytics-stat:nth-child(4){animation-delay:.17s}.analytics-stat:nth-child(5){animation-delay:.22s}
+    #page-overview>.analytics-panel{order:5}#page-overview>.journey{order:6}#page-overview>.page-foot{order:7}
+    @media(max-width:860px){.analytics-top{align-items:flex-start;flex-direction:column}.analytics-toolbar{width:100%;justify-content:space-between}.analytics-filter{margin-left:auto}}
+    @media(prefers-reduced-motion:reduce){.chart-line,.chart-area,.chart-point,.analytics-stat{animation:none!important;opacity:1!important;transform:none!important}.chart-line{stroke-dashoffset:0!important}}
+    @media(max-width:620px){.analytics-toolbar{align-items:stretch;flex-direction:column}.analytics-modes{width:100%}.analytics-mode{flex:1;padding-inline:7px;font-size:9px}.analytics-filter{justify-content:space-between;margin-left:0}.analytics-filter select{flex:1}.analytics-chart-wrap{min-height:205px}.analytics-svg{height:215px}.analytics-stats{grid-template-columns:repeat(2,minmax(0,1fr));row-gap:16px}.analytics-stat{padding:0 10px;border-right:0}.analytics-stat:nth-child(odd){padding-left:0;border-right:1px solid #edf0f4}.analytics-stat:nth-child(even){padding-right:0}.analytics-stat:last-child{border-right:0}}
+  </style>
+</head>
+<body>
+  <div class="app">
+    <aside class="sidebar">
+      <div class="brand">
+        <div class="brand-mark" aria-hidden="true">R</div>
+        <div><div class="brand-name">rianom</div><div class="brand-sub">LEAD COMMAND CENTER</div></div>
+      </div>
+      <div class="workspace-label">WORKSPACE</div>
+      <nav class="nav-list" aria-label="Main navigation">
+        <button class="nav-item active" data-tab="overview" type="button">
+          <svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><rect x="3" y="3" width="7" height="7" rx="1.2"/><rect x="14" y="3" width="7" height="7" rx="1.2"/><rect x="3" y="14" width="7" height="7" rx="1.2"/><rect x="14" y="14" width="7" height="7" rx="1.2"/></svg><span class="nav-label">Overview</span>
+        </button>
+        <button class="nav-item" data-tab="leads" type="button">
+          <svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><circle cx="9" cy="8" r="4"/><path d="M2.8 20a6.2 6.2 0 0 1 12.4 0M17 11a3.4 3.4 0 1 0 0-6.8M17 15a5.2 5.2 0 0 1 4.2 5"/></svg><span class="nav-label">Leads</span><span id="nav-lead-count" class="nav-count">20</span>
+        </button>
+        <button class="nav-item" data-tab="calls" type="button">
+          <svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M6.4 3.5h3l1.5 4.1-2 1.6a15.6 15.6 0 0 0 5.9 5.9l1.6-2 4.1 1.5v3a2 2 0 0 1-2.2 2A16.6 16.6 0 0 1 4.4 5.7a2 2 0 0 1 2-2.2Z"/></svg><span class="nav-label">Call Logs</span>
+        </button>
+        <button class="nav-item" data-tab="whatsapp" type="button">
+          <svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M20.4 11.8a8.4 8.4 0 0 1-12.5 7.3L3 20l1-4.6a8.4 8.4 0 1 1 16.4-3.6Z"/><path d="M8.3 8.2c.3-.6.6-.6 1-.6l.7 1.7c.1.3.1.5-.1.7l-.5.6a6 6 0 0 0 2.8 2.8l.6-.5c.2-.2.4-.2.7-.1l1.7.7c.2.1.3.4.2.7-.2.7-.8 1.2-1.5 1.3-1.4.2-3.6-.9-5-2.3S6.4 9.6 6.7 8.5c.1-.6.8-1.1 1.6-1.3Z"/></svg><span class="nav-label">WhatsApp</span><span id="nav-wa-count" class="nav-count">3</span>
+        </button>
+        <button class="nav-item" data-tab="followups" type="button">
+          <svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><rect x="3.5" y="5" width="17" height="16" rx="2"/><path d="M7.5 3v4M16.5 3v4M3.5 10h17M8 14h3M8 17h6"/></svg><span class="nav-label">Follow-ups</span><span id="nav-followup-count" class="nav-count"></span>
+        </button>
+      </nav>
+      <div class="sidebar-bottom">
+        <div class="speed-card">
+          <div class="speed-card-top"><span>FIRST CONTACT SLA</span><i class="speed-dot"></i></div>
+          <strong>Under 2 sec</strong>
+          <p>Fast enough to catch a fresh enquiry.</p>
+        </div>
+        <div class="call-window-rail"><i class="call-window-mark"></i><span><b>Calling window</b><br>9 AM–8 PM IST</span></div>
+      </div>
+    </aside>
+    <main class="main">
+      <header class="topbar">
+        <div class="top-right">
+          <span class="system-status"><i></i>RESPONSE ACTIVE</span>
+          <span class="region-tag"><svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M10 2.4 17 6v8l-7 3.6L3 14V6l7-3.6Z"/><path d="m3.4 6.2 6.6 3.5 6.6-3.5M10 9.7v7.5"/></svg>INDIA · IST</span>
+          <div class="org-pill"><span class="org-avatar">RA</span>Rianom Realty</div>
+        </div>
+      </header>
+
+      <section class="page active" id="page-overview">
+        <div class="page-head">
+          <div class="crumb page-breadcrumb"><span>Rianom</span><span>/</span><strong>Overview</strong></div>
+          <h1>Lead command center</h1><p class="page-subtitle">Respond while every enquiry is still fresh.</p>
+          <div class="head-actions"><button class="btn" id="overview-refresh" type="button"><svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.7"><path d="M16.4 8a6.5 6.5 0 0 0-11.7-2L3.3 8M3.3 8V4.5M3.3 8h3.5M3.6 12a6.5 6.5 0 0 0 11.7 2l1.4-2M16.7 12v3.5M16.7 12h-3.5"/></svg>Refresh view</button></div>
+        </div>
+
+        <div class="hero-speed">
+          <div class="hero-copy"><div class="hero-kicker">AVERAGE TIME TO FIRST CONTACT</div><div class="hero-number"><span id="hero-speed-value">1.4</span><small>seconds</small></div><p class="hero-caption">Fast response gives a fresh enquiry a reason to stay in the conversation.</p></div>
+          <div class="hero-insight"><span class="insight-mark">↗</span><div><b>Be first to the conversation</b><p>Broker portal leads can go cold quickly. The AI voice agent starts outreach while interest is still fresh.</p></div></div>
+          <div class="sla-box"><b>&lt; 2.0s</b><span>First contact target</span></div>
+        </div>
+
+        <div class="metric-grid" id="overview-metrics"></div>
+
+        <section class="panel panel-pad source-performance">
+          <div class="panel-head"><div><h2 class="panel-title">Lead source performance</h2><p class="panel-note">See which channels deliver faster contact and stronger buying intent.</p></div></div>
+          <div class="source-table-wrap"><table class="source-table"><thead><tr><th>Source</th><th>Leads</th><th>Contact Rate</th><th>Hot Lead %</th><th>Avg Time to Contact</th></tr></thead><tbody id="source-performance-body"></tbody></table></div>
+        </section>
+
+        <section class="panel panel-pad analytics-panel" aria-labelledby="analytics-title">
+          <div class="panel-head analytics-top">
+            <div><h2 class="panel-title" id="analytics-title">Lead performance</h2><p class="panel-note">Explore response speed and budget across recent enquiries.</p></div>
+            <div class="analytics-toolbar">
+              <div class="analytics-modes" id="analytics-modes" role="group" aria-label="Metric shown in chart">
+                <button class="analytics-mode active" type="button" data-analytics-mode="response" aria-pressed="true">Response speed</button>
+                <button class="analytics-mode" type="button" data-analytics-mode="budget" aria-pressed="false">Budget range</button>
+              </div>
+              <label class="analytics-filter"><span>Lead source</span><select id="analytics-source" aria-label="Filter chart by lead source"><option>All sources</option><option>99acres</option><option>MagicBricks</option><option>Meta Ads</option><option>Google Ads</option></select></label>
+            </div>
+          </div>
+          <div class="analytics-meta"><b id="analytics-chart-title">First response by enquiry</b><span id="analytics-chart-count">20 enquiries · all times IST</span></div>
+          <div class="analytics-chart-wrap" id="analytics-chart" aria-live="polite"><svg class="analytics-svg" id="analytics-svg" viewBox="0 0 900 250" role="group" aria-label="First response time for recent leads"></svg></div>
+          <div class="analytics-stats" id="analytics-stats" aria-label="Pipeline performance statistics"></div>
+        </section>
+
+        <div class="overview-grid">
+          <section class="panel panel-pad">
+            <div class="panel-head"><div><h2 class="panel-title">Lead intent mix</h2><p class="panel-note">AI classification across the current pipeline</p></div><button class="panel-action" data-go="leads">View leads →</button></div>
+            <div class="donut-layout"><div class="donut" id="intent-donut"><div class="donut-center"><strong id="donut-total">20</strong><span>total leads</span></div></div><div class="legend" id="intent-legend"></div></div>
+          </section>
+          <section class="panel panel-pad activity-panel">
+            <div class="panel-head"><div><h2 class="panel-title">Live activity</h2><p class="panel-note">Recent lead events across the response journey</p></div><div class="activity-head-right"><i class="pulse"></i><span>STREAMING</span></div></div>
+            <div class="activity-feed" id="activity-feed" aria-live="polite"></div>
+          </section>
+        </div>
+
+        <section class="panel journey">
+          <div class="panel-head"><div><h2 class="panel-title">From enquiry to site visit</h2><p class="panel-note">A fast, consistent response across portal and paid-ad leads</p></div><span class="status called">~1.4s response</span></div>
+          <div class="journey-steps">
+            <div class="journey-step"><span class="journey-dot">1</span><b>Lead arrives</b><p>99acres, MagicBricks, Meta Ads or Google Ads</p></div>
+            <div class="journey-step"><span class="journey-dot">2</span><b>Call + WhatsApp</b><p>Two channels start together while interest is fresh</p></div>
+            <div class="journey-step"><span class="journey-dot">3</span><b>Qualify naturally</b><p>Hindi, English and Hinglish conversations</p></div>
+            <div class="journey-step"><span class="journey-dot">4</span><b>Classify intent</b><p>Hot, warm or cold, with a clear next action</p></div>
+            <div class="journey-step"><span class="journey-dot">5</span><b>Follow through</b><p>Up to five attempts, within 9 AM–8 PM IST</p></div>
+          </div>
+          <div class="journey-meta"><b>Contact safeguards</b><span>Respect do-not-contact requests</span><span>·</span><span>Calling window 9 AM–8 PM IST</span><span class="spacer"></span><span>Contact policy applied to every enquiry</span></div>
+        </section>
+        <div class="page-foot"><span>Every enquiry gets a clear path to its next step.</span><span>All displayed times in IST</span></div>
+      </section>
+
+      <section class="page" id="page-leads">
+        <div class="page-head">
+          <div class="crumb page-breadcrumb"><span>Rianom</span><span>/</span><strong>Leads</strong></div>
+          <h1>Leads</h1><p class="page-subtitle">A clear view of who needs a call, a follow-up or a site visit.</p>
+          <div class="head-actions"><button class="btn btn-primary" id="open-import" type="button"><svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M10 13V3m0 0L6.5 6.5M10 3l3.5 3.5M3.5 12.5v3.2c0 .7.6 1.3 1.3 1.3h10.4c.7 0 1.3-.6 1.3-1.3v-3.2"/></svg>Add Leads</button></div>
+        </div>
+        <div class="leads-toolbar">
+          <label class="search"><svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.7"><circle cx="8.8" cy="8.8" r="5.7"/><path d="m13 13 4 4"/></svg><input id="lead-search" type="search" placeholder="Search name, city or property" autocomplete="off"></label>
+          <div class="filter-chips" id="lead-filters" aria-label="Filter leads">
+            <button class="filter-chip active" data-filter="All">All <span class="chip-count" data-count="All"></span></button>
+            <button class="filter-chip" data-filter="Hot">Hot <span class="chip-count" data-count="Hot"></span></button>
+            <button class="filter-chip" data-filter="Warm">Warm <span class="chip-count" data-count="Warm"></span></button>
+            <button class="filter-chip" data-filter="Cold">Cold <span class="chip-count" data-count="Cold"></span></button>
+            <button class="filter-chip" data-filter="Follow-up Due">Follow-up Due <span class="chip-count" data-count="Follow-up Due"></span></button>
+            <button class="filter-chip" data-filter="Booked">Booked <span class="chip-count" data-count="Booked"></span></button>
+            <button class="filter-chip" data-filter="DNC">DNC <span class="chip-count" data-count="DNC"></span></button>
+          </div>
+        </div>
+        <section class="panel leads-table-wrap">
+          <table class="leads-table"><thead><tr><th>Name</th><th>Phone</th><th>Source</th><th>City</th><th>Property interest</th><th>Budget</th><th>Intent</th><th>Status</th><th>Next follow-up</th></tr></thead><tbody id="leads-body"></tbody></table>
+          <div class="table-empty" id="leads-empty" hidden><b>No leads match these filters</b><span>Adjust the filters or upload a CSV to add leads.</span></div>
+          <div class="table-footer"><span id="table-count">20 leads</span><span>Phone numbers are masked</span></div>
+        </section>
+        <div class="page-foot"><span>Click a row to review call notes, follow-up history and the conversation.</span><span>Phone numbers are masked throughout the workspace.</span></div>
+      </section>
+
+      <section class="page" id="page-calls">
+        <div class="page-head">
+          <div class="crumb page-breadcrumb"><span>Rianom</span><span>/</span><strong>Call Logs</strong></div>
+          <h1>Call logs</h1><p class="page-subtitle">See how quickly each enquiry was reached and what the conversation revealed.</p>
+          <div class="head-actions"><span class="status called" id="call-count-label">20 call attempts</span></div>
+        </div>
+        <section class="panel panel-pad call-panel"><div class="panel-head"><div><h2 class="panel-title">Recent call activity</h2><p class="panel-note">Call outcomes and qualification notes across recent enquiries.</p></div><span class="activity-head-right"><i class="pulse"></i><span>TODAY’S CALLS</span></span></div><div class="call-list" id="call-list"></div></section>
+        <div class="page-foot"><span>Review conversations in Hindi, English and Hinglish.</span><span>Calls are sorted by latest activity</span></div>
+      </section>
+
+      <section class="page" id="page-whatsapp">
+        <div class="page-head">
+          <div class="crumb page-breadcrumb"><span>Rianom</span><span>/</span><strong>WhatsApp</strong></div>
+          <h1>WhatsApp</h1><p class="page-subtitle">Keep every property conversation moving with clear, timely follow-through.</p>
+          <div class="head-actions"><span class="status booked">Message journey</span></div>
+        </div>
+        <div class="wa-layout">
+          <aside class="wa-sidebar">
+            <div class="wa-side-head"><div class="wa-side-title"><h2>Conversations</h2><span id="wa-contact-count">10 leads</span></div><label class="search wa-search"><svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.7"><circle cx="8.8" cy="8.8" r="5.7"/><path d="m13 13 4 4"/></svg><input type="search" id="wa-search" placeholder="Search"></label></div>
+            <div class="wa-contacts" id="wa-contacts"></div>
+          </aside>
+          <section class="wa-main">
+            <header class="wa-chat-head" id="wa-chat-head"></header>
+            <div class="wa-messages" id="wa-messages"></div>
+            <form class="wa-compose" id="wa-compose"><input id="wa-compose-input" placeholder="Type a message…" autocomplete="off"><button aria-label="Send message" type="submit"><svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.8"><path d="m3 3 14 7-14 7 2-6 7-1-7-1-2-6Z"/></svg></button></form>
+            <div class="wa-note">Replies are saved with this lead</div>
+          </section>
+        </div>
+      </section>
+
+      <section class="page" id="page-followups">
+        <div class="page-head">
+          <div class="crumb page-breadcrumb"><span>Rianom</span><span>/</span><strong>Follow-ups</strong></div>
+          <h1>Follow-ups</h1><p class="page-subtitle">Next outreach tasks, ordered by their scheduled time.</p>
+          <div class="head-actions"><span class="status called" id="followup-count-label">0 scheduled</span></div>
+        </div>
+        <div class="followup-cadence"><b>Automatic retries</b><span> — up to 5 attempts · Hot: retry in 2h · Warm: 24h · Cold: 3 days · Calling hours 9 AM–8 PM IST · Stops immediately on opt-out.</span></div>
+        <section class="panel followup-table-wrap">
+          <table class="followup-table"><thead><tr><th>Lead Name</th><th>Intent</th><th>Channel</th><th>Attempt</th><th>Next Action</th><th>Scheduled For</th><th>Reason</th><th>Status</th><th>Actions</th></tr></thead><tbody id="followups-body"></tbody></table>
+          <div class="followup-empty" id="followups-empty" hidden>No follow-ups are scheduled. Leads marked DNC or booked are excluded.</div>
+        </section>
+      </section>
+    </main>
+  </div>
+
+  <div class="modal-backdrop" id="import-backdrop" hidden>
+    <section class="modal" role="dialog" aria-modal="true" aria-labelledby="import-title">
+      <div class="modal-head"><div><h2 id="import-title">Add leads from CSV</h2><p>Map your lead list, review the rows and start outreach.</p></div><button class="close-btn" type="button" data-close-import aria-label="Close">×</button></div>
+      <div class="modal-body">
+        <div id="import-stage-upload">
+          <div class="upload-zone" id="drop-zone"><div class="upload-icon"><svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.7"><path d="M10 13V3m0 0L6.5 6.5M10 3l3.5 3.5M3.5 12.5v3.2c0 .7.6 1.3 1.3 1.3h10.4c.7 0 1.3-.6 1.3-1.3v-3.2"/></svg></div><b>Drop a CSV file here</b><span>or choose a file with name, phone, city, budget, property and source columns</span><button class="btn" id="choose-csv" type="button">Choose CSV</button><input id="csv-file" type="file" accept=".csv,text/csv" hidden></div>
+          <p class="upload-error" id="csv-error" hidden></p>
+          <div id="csv-mapping" hidden><div class="map-section"><div class="map-head"><b>Column mapping</b><span id="csv-row-count"></span></div><div class="map-grid" id="map-grid"></div><div class="preview-wrap"><table class="preview-table"><thead id="preview-head"></thead><tbody id="preview-body"></tbody></table></div><div class="privacy-note"><svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.7"><path d="M10 2.5 16 5v4.7c0 3.4-2.3 5.8-6 7.8-3.7-2-6-4.4-6-7.8V5l6-2.5Z"/><path d="m7.5 10 1.7 1.7 3.4-3.8"/></svg><span>Phone numbers stay masked throughout the workspace.</span></div></div></div>
+          <div id="import-stage-progress" hidden><div class="map-head"><b>AI outreach</b><span class="status called">Response in progress</span></div><div class="outreach-progress"><div class="progress-top"><span id="outreach-count">Preparing leads…</span><span id="outreach-fast">Dial initiation target &lt; 2s</span></div><div class="progress-track"><i id="outreach-progress-bar" style="width:0%"></i></div></div><div class="outreach-rows" id="outreach-rows"></div></div>
+          <div class="modal-actions"><span class="modal-actions-left" id="modal-help">Phone numbers are masked for privacy.</span><button class="btn btn-primary" type="button" id="start-outreach" disabled>Start AI Outreach</button><button class="btn btn-primary" type="button" id="finish-outreach" hidden>View leads</button></div>
+        </div>
+      </div>
+    </section>
+  </div>
+
+  <div class="drawer-backdrop" id="drawer-backdrop" hidden>
+    <aside class="drawer" role="dialog" aria-modal="true" aria-labelledby="drawer-name">
+      <div class="drawer-head"><span>Lead record</span><button class="close-btn" id="close-drawer" type="button" aria-label="Close lead detail">×</button></div>
+      <div class="drawer-content" id="drawer-content"></div>
+    </aside>
+  </div>
+  <script>
+  (function(){
+    "use strict";
+    const STORAGE_KEY="rianom-lead-command-center-v3";
+    const LEGACY_STORAGE_KEYS=["rianom-lead-command-center-v2","rianom-lead-command-center-v1"];
+    const allowedSources=["99acres","MagicBricks","Meta Ads","Google Ads"];
+    const seedRows=[
+      ["Aarav Mehta","Pune","Godrej Woods 3BHK",12800000,"99acres","Hot","Booked",2,22,"0.9","Answered","Book site visit","Looking for a ready-to-move 3BHK near his parents. Asked about possession and parking.","Possession date","Ready-to-move, covered parking"],
+      ["Ayesha Khan","Mumbai","Lodha Bellevue 2BHK",9400000,"Meta Ads","Warm","Follow-up Scheduled",5,4,"1.3","Answered","Send brochure","Interested in the floor plan; wants to compare commute options with her partner.","Commute distance","Floor plan, metro access"],
+      ["Priya Nair","Bangalore","Prestige Lakeside 2BHK",8200000,"MagicBricks","Warm","Follow-up Scheduled",3,18,"1.1","No Answer","Call back","Recently enquired and prefers an evening call after work.","Timing","Lake view, clubhouse"],
+      ["Rohan Mehta","Gurgaon","DLF Privana 3BHK",18400000,"99acres","Hot","Called",1,0,"1.2","Answered","Book site visit","Clear purchase intent and flexible on a weekend site visit.","Final price","Clubhouse, possession"],
+      ["Kabir Sethi","Pune","Kumar Prospera 2BHK",7600000,"Google Ads","Cold","New",8,0,"1.7","Busy","Nurture","Early research stage; asked for a short overview before discussing a visit.","Still comparing","Connectivity, pricing"],
+      ["Mira Iyer","Bangalore","Sobha Dream Acres 3BHK",11200000,"Meta Ads","Hot","Booked",1,44,"0.8","Answered","Book site visit","Family is ready to visit Saturday; confirmed preferred time and guest count.","Parking allocation","Schools nearby, model flat"],
+      ["Dev Malhotra","Mumbai","Godrej Vistas 2BHK",10500000,"MagicBricks","Warm","Called",2,0,"1.4","Answered","Send brochure","Wants a detailed cost sheet and a clear view of maintenance charges.","All-inclusive cost","Cost sheet, amenities"],
+      ["Sara D'Souza","Pune","VTP Blue Waters 3BHK",9900000,"99acres","Cold","Follow-up Scheduled",6,-2,"1.6","No Answer","Nurture","No answer on first attempt; a gentle follow-up is scheduled in the calling window.","Not available yet","Green space, school access"],
+      ["Vikram Rao","Gurgaon","M3M Crown 3BHK",16500000,"Google Ads","Hot","Follow-up Scheduled",1,3,"1.0","Answered","Call back","Asked to speak with the project advisor about a corner unit this afternoon.","Unit availability","Corner unit, amenities"],
+      ["Ananya Bose","Bangalore","Prestige Lakeside 1BHK",5800000,"Meta Ads","Warm","Called",3,0,"1.5","Answered","Send brochure","First-time buyer who requested a simple EMI and neighbourhood overview.","Loan eligibility","EMI options, transit"],
+      ["Ishaan Kapoor","Mumbai","Lodha Bellevue 3BHK",22800000,"99acres","Hot","Booked",0,30,"0.9","Answered","Book site visit","High intent; requested a private walkthrough with the sales team.","None noted","Sea view, private tour"],
+      ["Zoya Ahmed","Pune","Godrej Woods 2BHK",7900000,"MagicBricks","Cold","DNC",11,0,"1.8","Busy","Drop","Requested no further contact during the qualification call.","Do not contact","No further contact"],
+      ["Arjun Pillai","Bangalore","Sobha Dream Acres 2BHK",8700000,"Google Ads","Warm","Follow-up Scheduled",4,7,"1.2","No Answer","Call back","Shared a suitable time for tomorrow morning; no answer on today's call.","Timing","Floor plan, community"],
+      ["Neha Chawla","Gurgaon","DLF Privana 2BHK",13900000,"Meta Ads","Cold","New",9,0,"1.6","Busy","Nurture","Exploring options around a relocation; asked for an introductory brochure.","Move date","Nearby offices, schools"],
+      ["Rahul Menon","Mumbai","Godrej Vistas 3BHK",17200000,"99acres","Hot","Called",2,0,"1.0","Answered","Book site visit","Shortlisted two layouts and wants a Sunday visit with his parents.","Possession month","Family visit, floor plan"],
+      ["Tara Kulkarni","Pune","Kumar Prospera 1BHK",5200000,"Google Ads","Warm","Follow-up Scheduled",7,2,"1.7","No Answer","Send brochure","Interested in investment potential; asked for rental estimates by WhatsApp.","Rental yield","Rental estimate, connectivity"],
+      ["Aditya Verma","Bangalore","Prestige Lakeside 3BHK",14900000,"MagicBricks","Cold","Called",5,0,"1.4","Answered","Nurture","Still comparing three locations and prefers not to make a decision this week.","Decision timing","Nearby schools, green space"],
+      ["Farah Siddiqui","Gurgaon","M3M Crown 2BHK",9800000,"Meta Ads","Warm","Follow-up Scheduled",2,23,"1.1","Answered","Call back","Asked for a call after sharing the all-inclusive price with family.","Family review","Price breakup, clubhouse"],
+      ["Karan Desai","Mumbai","Lodha Bellevue 2BHK",11900000,"Google Ads","Hot","Booked",1,51,"0.9","Answered","Book site visit","Confirmed a site visit and asked for parking and access details.","Parking count","Model apartment, parking"],
+      ["Leela Krishnan","Pune","VTP Blue Waters 2BHK",6800000,"MagicBricks","Warm","Follow-up Scheduled",4,-5,"1.3","No Answer","Nurture","No answer; retry moved to the next permitted calling window.","Not reached","Green space, commute"]
+    ];
+    const sourceMix=["99acres","Meta Ads","99acres","99acres","Google Ads","MagicBricks","MagicBricks","99acres","Google Ads","99acres","99acres","Meta Ads","MagicBricks","Meta Ads","99acres","Meta Ads","Meta Ads","Meta Ads","Meta Ads","Google Ads"];
+    const contactSpeeds=[0.72,0.96,0.84,0.98,1.62,1.93,1.84,0.91,1.05,0.88,1.12,1.78,1.96,1.24,1.38,1.18,1.64,0.93,0.82,1.56];
+    const receivedMinutesAgo=[54,58,63,67,72,81,86,93,97,104,111,115,123,131,136,143,151,156,164,174];
+    const callDurations=[96,143,78,205,112,161,58,227,134,89,174,121,246,67,189,102,156,83,218,139];
+    seedRows.forEach(function(row,index){row[4]=sourceMix[index];row[7]=receivedMinutesAgo[index];row[9]=contactSpeeds[index]});
+    function isoHours(hours){return new Date(Date.now()+hours*3600000).toISOString()}
+    function activityAnchor(){
+      const istNow=new Date(Date.now()+330*60000),minuteOfDay=istNow.getUTCHours()*60+istNow.getUTCMinutes();
+      if(minuteOfDay<12*60){istNow.setUTCDate(istNow.getUTCDate()-1);istNow.setUTCHours(18,0,0,0)}
+      else if(minuteOfDay>20*60)istNow.setUTCHours(19,55,0,0);
+      return istNow.getTime()-330*60000;
+    }
+    const seedActivityAnchor=activityAnchor();
+    function isoMinutes(minutes){return new Date(Date.now()+minutes*60000).toISOString()}
+    function scheduleWithinCallingWindow(date){
+      const ist=new Date(date.getTime()+330*60000),hour=ist.getUTCHours(),minute=ist.getUTCMinutes();
+      if(hour<9)ist.setUTCHours(9,0,0,0);
+      else if(hour>20||(hour===20&&(minute>0||ist.getUTCSeconds()>0||ist.getUTCMilliseconds()>0))){ist.setUTCDate(ist.getUTCDate()+1);ist.setUTCHours(9,0,0,0)}
+      return new Date(ist.getTime()-330*60000).toISOString();
+    }
+    function maskedPhone(index){
+      const prefixes=["70","72","74","76","78","80","82","84","86","88","90","92","94","96","98","71","73","75","77","79"];
+      const safeIndex=Math.max(0,Math.floor(Number(index)||0)),prefix=prefixes[(safeIndex*7+3)%prefixes.length];
+      const suffix=String((safeIndex*7919+481)%1000).padStart(3,"0");
+      return "+91 "+prefix+"••• ••"+suffix;
+    }
+    function makeId(prefix){return prefix+"-"+Math.random().toString(36).slice(2,9)+"-"+Date.now().toString(36).slice(-5)}
+    function leadReference(lead){return String(lead.phone||lead.id||"").replace(/\D/g,"").slice(-5)||"00000"}
+    function summaryForLead(lead,context){
+      const intent=String(lead.intent||"Warm").toLowerCase(),first=String(lead.name||"Lead").split(" ")[0];
+      const signal=intent==="hot"?"Ready to move toward a site visit.":intent==="warm"?"Interested and comparing fit before committing.":"Early in research and better suited to a light nurture.";
+      return first+" is showing "+intent+" intent for "+lead.property+" in "+lead.city+", with a stated budget of "+formatBudget(lead.budget)+". "+signal+(context?" Call context: "+context:" Next step: "+lead.nextAction+".")+" Enquiry ref "+leadReference(lead)+".";
+    }
+    function transcriptForLead(lead,index){
+      const first=String(lead.name||"Lead").split(" ")[0],interests=lead.interests||[],interest=interests.length?interests[index%interests.length]:"layout details",reference=leadReference(lead);
+      if(lead.disposition==="No Answer")return "Call attempt for "+lead.name+" about "+lead.property+" in "+lead.city+"; stated budget "+formatBudget(lead.budget)+". No answer, so the "+String(lead.intent||"warm").toLowerCase()+" lead is queued for a permitted follow-up. Enquiry ref "+reference+".";
+      if(lead.disposition==="Busy")return "AI voice agent: Namaste "+first+", is this a good time to discuss "+lead.property+" in "+lead.city+"? Lead: Abhi busy hoon. Please share "+interest+" for my "+formatBudget(lead.budget)+" budget. Enquiry ref "+reference+".";
+      const opening=index%3===0?"Namaste":"Hi";
+      const reply=index%3===1?"Haan, ":"Yes, ";
+      return "AI voice agent: "+opening+" "+first+", I can help with "+lead.property+" in "+lead.city+". Lead: "+reply+"my budget is around "+formatBudget(lead.budget)+"; please explain "+interest+". Intent noted as "+String(lead.intent||"warm").toLowerCase()+". Enquiry ref "+reference+".";
+    }
+    function followupReason(lead){
+      const intent=String(lead.intent||"Warm").toLowerCase();
+      const why=lead.disposition==="No Answer"?"No answer — retrying via "+(lead.nextAction==="Send brochure"?"WhatsApp nudge":"call"):
+        lead.nextAction==="Send brochure"?"Asked for a brochure before deciding on a visit":
+        lead.nextAction==="Book site visit"?"Strong intent — confirm a site-visit slot":
+        lead.nextAction==="Call back"?"Requested a call back at a better time":"Nurture while comparing options";
+      return why+" · "+lead.property+" · "+lead.city+" · "+formatBudget(lead.budget)+" · "+intent+" intent · ref "+leadReference(lead);
+    }
+    function seededLead(row,index){
+      const lead={id:"lead-seed-"+String(index+1).padStart(2,"0"),name:row[0],city:row[1],property:row[2],budget:Number(row[3]),source:row[4],intent:row[5],status:row[6],receivedAt:new Date(seedActivityAnchor-row[7]*60000).toISOString(),nextAt:row[8]===0?null:scheduleWithinCallingWindow(new Date(Date.now()+row[8]*3600000)),firstContact:Number(row[9]),disposition:row[10],nextAction:row[11],summary:"",objections:row[13].split(", "),interests:row[14].split(", "),followupCount:index===7?5:Math.max(0,Math.min(5,Math.floor(index%4))),phone:maskedPhone(index),callId:"call-seed-"+String(index+1).padStart(2,"0"),whatsappStatus:row[6]==="DNC"?"Suppressed":"Delivered"};
+      lead.summary=summaryForLead(lead,row[12]);
+      lead.summaryTemplateVersion=4;
+      return lead;
+    }
+    const initialLeads=seedRows.map(seededLead);
+    function initialCalls(leads){
+      return leads.filter(function(l){return l.disposition;}).map(function(l,index){
+        const answered=l.disposition==="Answered";
+        return {id:l.callId,leadId:l.id,at:new Date(Date.parse(l.receivedAt)+Math.max(.9,l.firstContact)*1000).toISOString(),duration:answered?callDurations[index%callDurations.length]:0,disposition:l.disposition,intent:l.intent,firstContact:l.firstContact,transcript:transcriptForLead(l,index)};
+      }).sort(function(a,b){return Date.parse(b.at)-Date.parse(a.at)});
+    }
+    function initialActivity(leads){
+      const events=[];
+      leads.slice(0,8).forEach(function(l,index){
+        events.push({id:"evt-intake-"+l.id,leadId:l.id,kind:"intake",at:l.receivedAt,title:l.name+" — "+l.source,detail:"New enquiry received for "+l.property});
+        if(index<6) events.push({id:"evt-call-"+l.id,leadId:l.id,kind:"call",at:new Date(Date.parse(l.receivedAt)+l.firstContact*1000).toISOString(),title:l.name+" — called in "+l.firstContact+"s",detail:l.disposition==="Answered"?"AI voice agent connected · "+l.intent.toLowerCase()+" intent":"No answer · follow-up path started"});
+        if(index<5) events.push({id:"evt-wa-"+l.id,leadId:l.id,kind:"wa",at:new Date(Date.parse(l.receivedAt)+2500).toISOString(),title:"WhatsApp delivered to "+l.name,detail:"Property details sent for "+l.property});
+      });
+      return events.sort(function(a,b){return Date.parse(b.at)-Date.parse(a.at)}).slice(0,22);
+    }
+    function starterMessages(lead,index){
+      const first=String(lead.name||"there").split(" ")[0],budget=formatBudget(lead.budget),project=lead.property,city=lead.city;
+      const interests=lead.interests||[],objections=lead.objections||[];
+      const interest=interests[index%Math.max(1,interests.length)]||"floor plan";
+      const concern=objections[index%Math.max(1,objections.length)]||"total cost";
+      const intent=String(lead.intent||"Warm").toLowerCase(),action=lead.nextAction||"Call back";
+      const recentMessageAges=[3,8,12,17,21,27,34,41,48,55,63,69,78,86,93,101,109,118,127,139];
+      const conversationStart=Date.now()-(52+recentMessageAges[index%recentMessageAges.length])*60000;
+      const at=function(minutes){return new Date(conversationStart+minutes*60000).toISOString()};
+      const outbound=function(text,minutes,read){return {dir:"out",text:text,at:at(minutes),read:read}};
+      const inbound=function(text,minutes){return {dir:"in",text:text,at:at(minutes),read:true}};
+      return [
+        outbound("Hi "+first+", thanks for your enquiry about "+project+" in "+city+". I can walk you through options around "+budget+" and share the current floor plan.",2,true),
+        inbound("Please share the "+interest+" for "+project+". We are keeping the budget near "+budget+" while comparing homes in "+city+".",7,true),
+        outbound("Absolutely, "+first+". I have the "+project+" layout ready, with the "+interest+" details called out for an easier comparison.",11,true),
+        inbound("Could you clarify "+concern+" for "+project+"? I want to understand the full picture before I plan a visit.",17,true),
+        outbound("For "+project+" in "+city+", the options around "+budget+" are a good starting point. I can also share the location and cost breakup.",23,true),
+        inbound("Haan, "+city+" is convenient. Please keep "+interest+" in mind and tell me what the next step is for "+intent+" buyers.",31,true),
+        outbound("Thanks, "+first+". Based on your "+intent+" interest, I can help with: "+action+". Would that work for "+project+"?",39,true),
+        inbound("That sounds good. I will check with my family about "+project+" and get back to you on the "+budget+" range.",46,true),
+        outbound("Noted for "+first+": "+action+" for "+project+" in "+city+", around "+budget+". I will keep the "+intent+" follow-up focused on "+interest+". Enquiry ref "+leadReference(lead)+".",52,index%3!==0)
+      ];
+    }
+    function buildSeed(){
+      const leads=initialLeads;
+      return {leads:leads,calls:initialCalls(leads),activity:initialActivity(leads),messages:Object.fromEntries(leads.filter(function(l){return l.status!=="DNC"}).map(function(l,i){return [l.id,starterMessages(l,i)]})),unread:{"lead-seed-03":true,"lead-seed-08":true,"lead-seed-15":true},messageTemplateVersion:5,dataVersion:5};
+    }
+    let store;
+    try{
+      const saved=localStorage.getItem(STORAGE_KEY);
+      if(saved){const parsed=JSON.parse(saved);store=parsed&&Array.isArray(parsed.leads)&&parsed.leads.length?parsed:buildSeed()}
+      else{
+        const legacy=LEGACY_STORAGE_KEYS.map(function(key){return localStorage.getItem(key)}).find(Boolean),parsed=legacy?JSON.parse(legacy):null;
+        store=buildSeed();
+        if(parsed&&Array.isArray(parsed.leads)){
+          const seededIds=new Set(store.leads.map(function(lead){return lead.id}));
+          const imported=parsed.leads.filter(function(lead){return lead&&lead.id&&!seededIds.has(lead.id)&&!String(lead.id).startsWith("lead-seed-")});
+          const importedIds=new Set(imported.map(function(lead){return lead.id}));
+          store.leads=store.leads.concat(imported);
+          store.calls=store.calls.concat((parsed.calls||[]).filter(function(call){return importedIds.has(call.leadId)}));
+          store.activity=store.activity.concat((parsed.activity||[]).filter(function(event){return importedIds.has(event.leadId)}));
+          imported.forEach(function(lead){if(parsed.messages&&parsed.messages[lead.id])store.messages[lead.id]=parsed.messages[lead.id]});
+          Object.keys(parsed.unread||{}).forEach(function(id){if(importedIds.has(id))store.unread[id]=parsed.unread[id]});
+        }
+      }
+    }catch(e){store=buildSeed()}
+    if(!Array.isArray(store.calls))store.calls=initialCalls(store.leads);
+    if(!Array.isArray(store.activity))store.activity=initialActivity(store.leads);
+    if(!store.messages)store.messages={};
+    if(!store.unread)store.unread={};
+    store.leads.filter(function(l){return l.status==="DNC"}).forEach(function(l){delete store.messages[l.id];store.unread[l.id]=false;l.whatsappStatus="Suppressed"});
+    store.leads.forEach(function(lead,index){
+      if(Number(lead.summaryTemplateVersion||0)<4){lead.summary=summaryForLead(lead,lead.summary);lead.summaryTemplateVersion=4}
+      if(lead.status!=="DNC"&&(!Array.isArray(store.messages[lead.id])||store.messages[lead.id].length<6))store.messages[lead.id]=starterMessages(lead,index);
+    });
+    if(store.messageTemplateVersion!==5){store.leads.forEach(function(lead,index){if(lead.id.startsWith("lead-seed-")&&lead.status!=="DNC")store.messages[lead.id]=starterMessages(lead,index)});store.messageTemplateVersion=5}
+    store.activity=store.activity.filter(function(event){if(event.kind==="intake")return true;const lead=store.leads.find(function(l){return l.id===event.leadId});return !lead||lead.status!=="DNC"});
+    function persist(){try{localStorage.setItem(STORAGE_KEY,JSON.stringify(store))}catch(e){}}
+    persist();
+
+    const state={tab:"overview",filter:"All",search:"",selectedLead:null,selectedWa:null,playingId:null,pausedId:null,playback:0,metricAnimationStarted:false,analyticsMode:"response",csvRows:[],csvFields:[],mapping:{},outreachRows:[],outreachDone:0,sortKey:"receivedAt",sortAsc:false};
+    const $=function(selector,root){return (root||document).querySelector(selector)};
+    const $$=function(selector,root){return Array.from((root||document).querySelectorAll(selector))};
+    function escapeHtml(value){
+      return String(value==null?"":value).replace(/[&<>"']/g,function(char){return {"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[char]});
+    }
+    function initials(name){return String(name||"Lead").split(/\s+/).filter(Boolean).slice(0,2).map(function(x){return x[0].toUpperCase()}).join("")}
+    function formatBudget(amount){
+      const value=Number(amount)||0;
+      if(value>=10000000){const crore=value/10000000;return "₹"+(Number.isInteger(crore)?crore:crore.toFixed(2).replace(/0+$/,"").replace(/\.$/,""))+"Cr"}
+      if(value>=100000){const lakh=value/100000;return "₹"+(Number.isInteger(lakh)?lakh:lakh.toFixed(1).replace(/\.0$/,""))+"L"}
+      return "₹"+new Intl.NumberFormat("en-IN",{maximumFractionDigits:0}).format(value);
+    }
+    function formatTime(date){
+      if(!date)return "—";
+      return new Intl.DateTimeFormat("en-IN",{hour:"2-digit",minute:"2-digit",timeZone:"Asia/Kolkata"}).format(new Date(date));
+    }
+    function formatDateTime(date){
+      if(!date)return "—";
+      return new Intl.DateTimeFormat("en-IN",{day:"2-digit",month:"short",hour:"2-digit",minute:"2-digit",timeZone:"Asia/Kolkata"}).format(new Date(date));
+    }
+    function istDayKey(date){
+      const parts=new Intl.DateTimeFormat("en-GB",{year:"numeric",month:"2-digit",day:"2-digit",timeZone:"Asia/Kolkata"}).formatToParts(new Date(date));
+      const values={};parts.forEach(function(part){values[part.type]=part.value});
+      return values.year+"-"+values.month+"-"+values.day;
+    }
+    function relativeDue(date){
+      if(!date)return "—";
+      const day=istDayKey(date),today=istDayKey(Date.now()),tomorrow=istDayKey(Date.now()+24*3600000);
+      if(day<today)return "Overdue · "+formatTime(date);
+      if(day===today)return "Today · "+formatTime(date);
+      if(day===tomorrow)return "Tomorrow · "+formatTime(date);
+      return new Intl.DateTimeFormat("en-IN",{day:"numeric",month:"short",hour:"2-digit",minute:"2-digit",timeZone:"Asia/Kolkata"}).format(new Date(date));
+    }
+    function ago(date){
+      const mins=Math.max(0,Math.floor((Date.now()-Date.parse(date))/60000));
+      if(mins<1)return "just now";
+      if(mins<60)return mins+"m ago";
+      const hrs=Math.floor(mins/60);
+      if(hrs<24)return hrs+"h ago";
+      return Math.floor(hrs/24)+"d ago";
+    }
+    function compactDate(date){
+      if(!date)return "";
+      const d=new Date(date);
+      const today=new Date();
+      const sameDay=d.toLocaleDateString("en-CA",{timeZone:"Asia/Kolkata"})===today.toLocaleDateString("en-CA",{timeZone:"Asia/Kolkata"});
+      return sameDay?formatTime(date):new Intl.DateTimeFormat("en-IN",{day:"2-digit",month:"short",timeZone:"Asia/Kolkata"}).format(d);
+    }
+    function isFollowupDue(lead){
+      return lead.status==="Follow-up Scheduled"&&lead.nextAt&&istDayKey(lead.nextAt)<=istDayKey(Date.now());
+    }
+    function intentClass(intent){return String(intent||"Cold").toLowerCase()}
+    function statusClass(status){return String(status||"").toLowerCase().replace(/\s+/g,"-")}
+    function statusBadge(status){return '<span class="status '+statusClass(status)+'">'+escapeHtml(status)+'</span>'}
+    function intentBadge(intent){return '<span class="intent '+intentClass(intent)+'">'+escapeHtml(intent)+'</span>'}
+    function callIcon(kind){
+      if(kind==="call")return '<svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.7"><path d="M5.4 3h2.4l1.2 3.3-1.5 1.3a11.6 11.6 0 0 0 4.3 4.3l1.3-1.5 3.3 1.2V14a1.7 1.7 0 0 1-1.8 1.7A13.3 13.3 0 0 1 3.7 4.9 1.7 1.7 0 0 1 5.4 3Z"/></svg>';
+      if(kind==="wa")return '<svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.7"><path d="M16.7 9.8a6.7 6.7 0 0 1-10 5.8L3 16.5l.8-3.7a6.7 6.7 0 1 1 12.9-3Z"/><path d="M7.2 7.2c.2-.4.4-.4.7-.4l.6 1.3c.1.2 0 .4-.1.5l-.4.4a4.5 4.5 0 0 0 2.1 2.1l.4-.4c.1-.1.3-.2.5-.1l1.3.6c.2.1.2.3.1.6-.2.5-.6.8-1.1.9-1 .1-2.7-.7-3.7-1.7s-1.8-2.7-1.7-3.7c.1-.5.6-.9 1.3-1Z"/></svg>';
+      if(kind==="follow")return '<svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.7"><circle cx="10" cy="10" r="7"/><path d="M10 6v4l2.7 1.7"/></svg>';
+      return '<svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.7"><path d="M3 4h14v10H8l-5 3V4Z"/><path d="M6 7h8M6 10h5"/></svg>';
+    }
+    function animateCountUp(node,value){
+      if(!node)return;
+      const match=String(value).match(/^(-?\d+(?:\.\d+)?)(.*)$/);
+      if(!match)return;
+      if(window.matchMedia&&window.matchMedia("(prefers-reduced-motion: reduce)").matches){node.textContent=value;return}
+      const target=Number(match[1]),suffix=match[2],decimals=(match[1].split(".")[1]||"").length,start=performance.now(),duration=500;
+      node.textContent=(0).toFixed(decimals)+suffix;
+      function frame(now){
+        const progress=Math.min(1,(now-start)/duration),eased=1-Math.pow(1-progress,3);
+        node.textContent=(target*eased).toFixed(decimals)+suffix;
+        if(progress<1)requestAnimationFrame(frame);
+      }
+      requestAnimationFrame(frame);
+    }
+    function renderMetrics(){
+      const todayKey=istDayKey(Date.now());
+      const today=store.leads.filter(function(l){return istDayKey(l.receivedAt)===todayKey}).length;
+      const calls=store.calls.length;
+      const connected=store.calls.filter(function(c){return c.disposition==="Answered"}).length;
+      const contactRate=calls?Math.round(connected/calls*100):0;
+      const hot=store.leads.filter(function(l){return l.intent==="Hot"}).length;
+      const booked=store.leads.filter(function(l){return l.status==="Booked"}).length;
+      const due=store.leads.filter(isFollowupDue).length;
+      const metrics=[
+        ["Leads today",String(today),"New enquiries received today","grid"],
+        ["Contact rate",contactRate+"%",connected+" answered calls","call"],
+        ["Hot leads",String(hot),"Ready for a focused next step","hot"],
+        ["Site visits booked",String(booked),"High-intent conversations","visit"],
+        ["Follow-ups due today",String(due),"Inside the 9 AM–8 PM window","follow"]
+      ];
+      const icons={grid:'<svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.7"><rect x="3" y="3" width="5" height="5" rx="1"/><rect x="12" y="3" width="5" height="5" rx="1"/><rect x="3" y="12" width="5" height="5" rx="1"/><rect x="12" y="12" width="5" height="5" rx="1"/></svg>',call:callIcon("call"),hot:'<svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.7"><path d="M10 17s-6-3.5-6-8.2A3.6 3.6 0 0 1 10 6a3.6 3.6 0 0 1 6 2.8C16 13.5 10 17 10 17Z"/></svg>',visit:'<svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.7"><path d="M3 8.5 10 3l7 5.5v7.2c0 .7-.6 1.3-1.3 1.3H4.3c-.7 0-1.3-.6-1.3-1.3V8.5Z"/><path d="M7.5 17v-5h5v5"/></svg>',follow:callIcon("follow")};
+      $("#overview-metrics").innerHTML=metrics.map(function(m){return '<div class="metric"><div class="metric-head"><span>'+escapeHtml(m[0])+'</span><span class="metric-icon">'+icons[m[3]]+'</span></div><strong>'+escapeHtml(m[1])+'</strong><small>'+escapeHtml(m[2])+'</small></div>'}).join("");
+      if(!state.metricAnimationStarted){
+        state.metricAnimationStarted=true;
+        animateCountUp($("#hero-speed-value"),"1.4");
+        $$("#overview-metrics .metric strong").forEach(function(node){animateCountUp(node,node.textContent)});
+      }
+      $("#nav-lead-count").textContent=store.leads.length;
+      $("#nav-wa-count").textContent=Object.values(store.unread).filter(Boolean).length||"";
+    }
+    function renderDonut(){
+      const counts={Hot:0,Warm:0,Cold:0};
+      store.leads.forEach(function(l){counts[l.intent]=(counts[l.intent]||0)+1});
+      const total=store.leads.length||1;const hot=counts.Hot||0,warm=counts.Warm||0,cold=counts.Cold||0;
+      const a=hot/total*360,b=a+warm/total*360;
+      $("#intent-donut").style.background="conic-gradient(var(--hot) 0deg "+a+"deg,var(--warm) "+a+"deg "+b+"deg,var(--cold) "+b+"deg 360deg)";
+      $("#donut-total").textContent=store.leads.length;
+      const rows=[["Hot",hot,"Ready for a site visit","var(--hot)"],["Warm",warm,"Comparing property options","var(--warm)"],["Cold",cold,"Early-stage interest","var(--cold)"]];
+      $("#intent-legend").innerHTML=rows.map(function(r){return '<div class="legend-row"><i class="legend-dot" style="background:'+r[3]+'"></i><span>'+r[0]+'<small>'+r[2]+'</small></span><b>'+r[1]+' <small style="display:inline">'+Math.round(r[1]/total*100)+'%</small></b></div>'}).join("");
+    }
+    function renderSourcePerformance(){
+      $("#source-performance-body").innerHTML=allowedSources.map(function(source){
+        const leads=store.leads.filter(function(l){return l.source===source});
+        const leadIds=new Set(leads.map(function(l){return l.id}));
+        const answered=new Set(store.calls.filter(function(c){return c.disposition==="Answered"&&leadIds.has(c.leadId)}).map(function(c){return c.leadId}));
+        const hot=leads.filter(function(l){return l.intent==="Hot"}).length;
+        const avg=leads.length?leads.reduce(function(sum,l){return sum+(Number(l.firstContact)||0)},0)/leads.length:0;
+        return '<tr><td><i class="source-dot"></i>'+escapeHtml(source)+'</td><td>'+leads.length+'</td><td>'+(leads.length?Math.round(answered.size/leads.length*100):0)+'%</td><td>'+(leads.length?Math.round(hot/leads.length*100):0)+'%</td><td>'+avg.toFixed(1)+'s</td></tr>';
+      }).join("");
+    }
+    function renderAnalytics(){
+      const selectedSource=$("#analytics-source").value||"All sources";
+      const leads=store.leads.filter(function(lead){return selectedSource==="All sources"||lead.source===selectedSource}).slice().sort(function(a,b){return Date.parse(a.receivedAt)-Date.parse(b.receivedAt)});
+      const mode=state.analyticsMode||"response",isBudget=mode==="budget",values=leads.map(function(lead){return isBudget?(Number(lead.budget)||0)/100000:Number(lead.firstContact)||0});
+      const title=isBudget?"Stated budget by enquiry":"First response by enquiry";
+      const svg=$("#analytics-svg");
+      $("#analytics-chart-title").textContent=title;
+      $("#analytics-chart-count").textContent=leads.length+" enquiries · "+(selectedSource==="All sources"?"all sources":selectedSource)+" · select a point for lead details";
+      svg.setAttribute("aria-label",title+" for "+leads.length+" recent enquiries");
+      if(!leads.length){svg.innerHTML='<text x="450" y="125" text-anchor="middle">No enquiries for this source yet</text>';$("#analytics-stats").innerHTML="";return}
+      const width=900,height=250,left=52,right=22,top=18,bottom=34,plotWidth=width-left-right,plotHeight=height-top-bottom;
+      const maxValue=isBudget?Math.max(50,Math.ceil(Math.max.apply(null,values)/50)*50):Math.max(2.5,Math.ceil(Math.max.apply(null,values)*2)/2);
+      const x=function(index){return leads.length===1?left+plotWidth/2:left+plotWidth*index/(leads.length-1)};
+      const y=function(value){return top+plotHeight-(Math.max(0,Math.min(maxValue,value))/maxValue)*plotHeight};
+      let grid="";
+      for(let tick=0;tick<=5;tick++){
+        const value=maxValue*(1-tick/5),yy=top+plotHeight*tick/5,label=isBudget?"₹"+Math.round(value)+"L":value.toFixed(1)+"s";
+        grid+='<line class="chart-grid" x1="'+left+'" y1="'+yy.toFixed(1)+'" x2="'+(width-right)+'" y2="'+yy.toFixed(1)+'"/><text x="'+(left-11)+'" y="'+(yy+3).toFixed(1)+'" text-anchor="end">'+label+'</text>';
+      }
+      const coords=leads.map(function(lead,index){return {lead:lead,x:x(index),y:y(values[index]),value:values[index]}});
+      const linePath=coords.map(function(point,index){return (index?"L":"M")+point.x.toFixed(1)+" "+point.y.toFixed(1)}).join(" ");
+      const areaPath=linePath+" L "+coords[coords.length-1].x.toFixed(1)+" "+(top+plotHeight)+" L "+coords[0].x.toFixed(1)+" "+(top+plotHeight)+" Z";
+      const tickIndexes=Array.from(new Set([0,Math.round((leads.length-1)*.25),Math.round((leads.length-1)*.5),Math.round((leads.length-1)*.75),leads.length-1]));
+      const xLabels=tickIndexes.map(function(index){const anchor=index===0?"start":index===leads.length-1?"end":"middle";return '<text x="'+x(index).toFixed(1)+'" y="'+(height-7)+'" text-anchor="'+anchor+'">'+escapeHtml(formatTime(leads[index].receivedAt))+'</text>'}).join("");
+      const points=coords.map(function(point,index){const label=isBudget?formatBudget(point.lead.budget):point.value.toFixed(1)+" seconds";return '<circle class="chart-point" cx="'+point.x.toFixed(1)+'" cy="'+point.y.toFixed(1)+'" r="4.2" style="--point-delay:'+Math.min(index*14,260)+'ms" data-chart-lead="'+escapeHtml(point.lead.id)+'" tabindex="0" role="button" aria-label="'+escapeHtml(point.lead.name+" · "+label+" · open lead details")+'"><title>'+escapeHtml(point.lead.name+" · "+label+" · "+point.lead.property)+'</title></circle>'}).join("");
+      svg.innerHTML='<defs><linearGradient id="analytics-fill" x1="0" x2="0" y1="0" y2="1"><stop offset="0%" stop-color="#416db4" stop-opacity=".2"/><stop offset="100%" stop-color="#416db4" stop-opacity="0"/></linearGradient></defs>'+grid+'<line class="chart-axis" x1="'+left+'" y1="'+(top+plotHeight)+'" x2="'+(width-right)+'" y2="'+(top+plotHeight)+'"/><path class="chart-area" d="'+areaPath+'"/><path class="chart-line" pathLength="1" d="'+linePath+'"/>'+points+xLabels;
+      const responseValues=leads.map(function(lead){return Number(lead.firstContact)||0}).sort(function(a,b){return a-b});
+      const median=responseValues.length%2?responseValues[(responseValues.length-1)/2]:(responseValues[responseValues.length/2-1]+responseValues[responseValues.length/2])/2;
+      const ids=new Set(leads.map(function(lead){return lead.id}));
+      const calls=store.calls.filter(function(call){return ids.has(call.leadId)});
+      const connected=new Set(calls.filter(function(call){return call.disposition==="Answered"}).map(function(call){return call.leadId})).size;
+      const visits=leads.filter(function(lead){return lead.status==="Booked"}).length;
+      const underSla=leads.filter(function(lead){return Number(lead.firstContact)<=2}).length;
+      const budget=leads.reduce(function(sum,lead){return sum+(Number(lead.budget)||0)},0);
+      const stats=[
+        ["Median response",median.toFixed(1)+"s","Across "+leads.length+" enquiries"],
+        ["Reached under 2s",Math.round(underSla/leads.length*100)+"%",underSla+" of "+leads.length+" within target"],
+        ["Connected leads",Math.round(connected/leads.length*100)+"%",connected+" conversations answered"],
+        ["Site visit rate",Math.round(visits/leads.length*100)+"%",visits+" visits booked"],
+        ["Stated budget total",formatBudget(budget),leads.length+" enquiries represented"]
+      ];
+      $("#analytics-stats").innerHTML=stats.map(function(stat){return '<div class="analytics-stat"><span>'+escapeHtml(stat[0])+'</span><strong>'+escapeHtml(stat[1])+'</strong><small>'+escapeHtml(stat[2])+'</small></div>'}).join("");
+    }
+    function activityMarkup(e,animate){
+        const klass=e.kind==="call"?"call":e.kind==="wa"?"wa":e.kind==="follow"?"follow":"";
+        return '<div class="activity-item '+(animate?"activity-new":"")+'" data-activity-id="'+escapeHtml(e.id||"")+'"><span class="activity-icon '+klass+'">'+callIcon(e.kind)+'</span><div class="activity-text"><b>'+escapeHtml(e.title)+'</b><span>'+escapeHtml(e.detail)+'</span></div><time>'+escapeHtml(ago(e.at))+'</time></div>';
+    }
+    function renderActivity(){
+      $("#activity-feed").innerHTML=store.activity.slice(0,9).map(function(e){return activityMarkup(e,false)}).join("");
+    }
+    function renderOverview(){renderMetrics();renderDonut();renderSourcePerformance();renderAnalytics();renderActivity()}
+    function filteredLeads(){
+      let leads=store.leads.slice();
+      if(state.filter==="Hot"||state.filter==="Warm"||state.filter==="Cold")leads=leads.filter(function(l){return l.intent===state.filter});
+      if(state.filter==="Follow-up Due")leads=leads.filter(isFollowupDue);
+      if(state.filter==="Booked")leads=leads.filter(function(l){return l.status==="Booked"});
+      if(state.filter==="DNC")leads=leads.filter(function(l){return l.status==="DNC"});
+      const q=state.search.trim().toLowerCase();
+      if(q)leads=leads.filter(function(l){return [l.name,l.city,l.property,l.source].join(" ").toLowerCase().includes(q)});
+      leads.sort(function(a,b){
+        const aa=a[state.sortKey],bb=b[state.sortKey];
+        const comp=typeof aa==="number"&&typeof bb==="number"?aa-bb:String(aa||"").localeCompare(String(bb||""));
+        return state.sortAsc?comp:-comp;
+      });
+      return leads;
+    }
+    function renderLeads(){
+      const counts={"All":store.leads.length,"Hot":0,"Warm":0,"Cold":0,"Follow-up Due":0,"Booked":0,"DNC":0};
+      store.leads.forEach(function(l){counts[l.intent]=(counts[l.intent]||0)+1;if(isFollowupDue(l))counts["Follow-up Due"]++;if(l.status==="Booked")counts.Booked++;if(l.status==="DNC")counts.DNC++});
+      $$("[data-count]").forEach(function(el){const filter=el.getAttribute("data-count");el.textContent=counts[filter]?"· "+counts[filter]:""});
+      const leads=filteredLeads();
+      $("#leads-body").innerHTML=leads.map(function(l,index){
+        return '<tr class="lead-row" data-lead-id="'+escapeHtml(l.id)+'" tabindex="0" role="button" aria-label="Open details for '+escapeHtml(l.name)+'"><td><div class="lead-name"><span class="lead-avatar '+(index%4===1?"coral":"")+'">'+escapeHtml(initials(l.name))+'</span><span><b>'+escapeHtml(l.name)+'</b><small>'+escapeHtml(l.property)+'</small></span></div></td><td><span class="phone">'+escapeHtml(l.phone)+'</span></td><td><span class="source-tag"><i class="source-dot"></i>'+escapeHtml(l.source)+'</span></td><td>'+escapeHtml(l.city)+'</td><td>'+escapeHtml(l.property)+'</td><td><span class="budget">'+formatBudget(l.budget)+'</span></td><td>'+intentBadge(l.intent)+'</td><td>'+statusBadge(l.status)+'</td><td><span class="next-due">'+escapeHtml(relativeDue(l.nextAt))+'</span></td></tr>';
+      }).join("");
+      $("#leads-empty").hidden=leads.length>0;
+      $("#table-count").textContent=leads.length+" lead"+(leads.length===1?"":"s")+" shown";
+      $("#nav-lead-count").textContent=store.leads.length;
+    }
+    function followupState(lead){
+      if(Number(lead.followupCount||0)>=5)return "Needs Review";
+      if(Date.parse(lead.nextAt)<Date.now())return "Needs Review";
+      return istDayKey(lead.nextAt)===istDayKey(Date.now())?"Due Today":"Upcoming";
+    }
+    function followupChannel(lead){
+      if(lead.disposition==="No Answer")return "WhatsApp";
+      if(lead.nextAction==="Send brochure")return "WhatsApp";
+      if(lead.intent==="Hot")return "Both";
+      return "Call";
+    }
+    function followupActionLabel(action){
+      return ({"Book site visit":"Book Site Visit","Send brochure":"Send Brochure","Call back":"Call Back","Nurture":"Nurture"})[action]||action||"Nurture";
+    }
+    function followupRelative(date){
+      const day=istDayKey(date),today=istDayKey(Date.now()),tomorrow=istDayKey(Date.now()+24*3600000);
+      const label=day<today?"Overdue":day===today?"Today":day===tomorrow?"Tomorrow":new Intl.DateTimeFormat("en-IN",{day:"numeric",month:"short",timeZone:"Asia/Kolkata"}).format(new Date(date));
+      return label+", "+formatTime(date);
+    }
+    function followupAbsolute(date){
+      return new Intl.DateTimeFormat("en-IN",{weekday:"short",day:"2-digit",month:"short",year:"numeric",hour:"2-digit",minute:"2-digit",timeZone:"Asia/Kolkata"}).format(new Date(date));
+    }
+    function renderFollowups(){
+      const leads=store.leads.filter(function(l){return l.status==="Follow-up Scheduled"&&l.nextAt}).sort(function(a,b){return Date.parse(a.nextAt)-Date.parse(b.nextAt)});
+      $("#followup-count-label").textContent=leads.length+" scheduled";
+      $("#nav-followup-count").textContent=leads.length||"";
+      $("#followups-empty").hidden=leads.length>0;
+      $("#followups-body").innerHTML=leads.map(function(lead){
+        const status=followupState(lead),statusClassName=status==="Due Today"?"called":status==="Needs Review"?"follow-up-scheduled":"";
+        const overdue=Date.parse(lead.nextAt)<Date.now();
+        return '<tr class="followup-row '+(overdue?"overdue":"")+'" data-followup-row="'+escapeHtml(lead.id)+'"><td><div class="followup-lead"><b>'+escapeHtml(lead.name)+'</b><small>'+escapeHtml(lead.city)+' · '+escapeHtml(lead.property)+'</small></div></td><td>'+intentBadge(lead.intent)+'</td><td>'+escapeHtml(followupChannel(lead))+'</td><td>'+Math.min(5,Number(lead.followupCount||0)+1)+' of 5</td><td>'+escapeHtml(followupActionLabel(lead.nextAction))+'</td><td><div class="followup-scheduled"><b>'+escapeHtml(followupRelative(lead.nextAt))+'</b><small>'+escapeHtml(followupAbsolute(lead.nextAt))+' IST</small></div></td><td><div class="followup-reason">'+escapeHtml(followupReason(lead))+'</div></td><td><span class="status '+statusClassName+'">'+status+'</span></td><td><div class="followup-actions"><button class="btn" type="button" data-followup-action="contact" data-followup-id="'+escapeHtml(lead.id)+'">Mark Contacted</button><button class="btn" type="button" data-followup-action="snooze" data-followup-id="'+escapeHtml(lead.id)+'">Snooze +1 day</button></div></td></tr>';
+      }).join("");
+    }
+    function markFollowupContacted(id){
+      const lead=store.leads.find(function(l){return l.id===id&&l.status==="Follow-up Scheduled"});
+      if(!lead)return;
+      lead.status="Called";lead.disposition="Answered";lead.nextAt=null;lead.followupCount=Math.min(5,Number(lead.followupCount||0)+1);
+      lead.summary=summaryForLead(lead,"Follow-up marked contacted; the next scheduled retry was cleared.");
+      const call={id:makeId("call"),leadId:lead.id,at:new Date().toISOString(),duration:92+Math.floor(Math.random()*120),disposition:"Answered",intent:lead.intent,firstContact:lead.firstContact,transcript:transcriptForLead(lead,store.calls.length)};
+      store.calls.unshift(call);store.calls=store.calls.slice(0,100);
+      addActivity({kind:"call",leadId:lead.id,title:"Follow-up marked contacted: "+lead.name,detail:lead.property+" · "+lead.city+" · "+lead.intent.toLowerCase()+" intent"});
+      persist();renderAll();
+    }
+    function snoozeFollowup(id){
+      const lead=store.leads.find(function(l){return l.id===id&&l.status==="Follow-up Scheduled"});
+      if(!lead)return;
+      lead.nextAt=scheduleWithinCallingWindow(new Date(Math.max(Date.now(),Date.parse(lead.nextAt)||0)+24*3600000));
+      addActivity({kind:"follow",leadId:lead.id,title:"Follow-up snoozed: "+lead.name,detail:lead.property+" in "+lead.city+" · "+followupRelative(lead.nextAt)});
+      persist();renderAll();
+    }
+    const waveformHeights=new Map();
+    function waveformBars(call,count){
+      const key=call.id;let heights=waveformHeights.get(key);
+      if(!heights||heights.length!==count){heights=Array.from({length:count},function(){return 5+Math.floor(Math.random()*16)});waveformHeights.set(key,heights)}
+      return heights.map(function(height,index){const low=Math.max(3,Math.round(height*.38)),delay=-((index%7)*.085);return '<i class="wavebar" style="height:'+height+'px;--wave-low:'+low+'px;--wave-high:'+height+'px;--wave-delay:'+delay.toFixed(3)+'s"></i>'}).join("");
+    }
+    function durationText(seconds){
+      const s=Math.max(0,Math.floor(seconds));return Math.floor(s/60)+":"+String(s%60).padStart(2,"0");
+    }
+    function recordingMarkup(call,mini){
+      const id=escapeHtml(call.id);
+      const total=Math.max(1,call.duration||1);
+      const active=state.playingId===call.id,paused=state.pausedId===call.id,progress=(active||paused)?state.playback/total*100:0;
+      const bars=waveformBars(call,20);
+      return '<div class="recording '+(mini?"mini-recording ":"")+(active?"is-playing":"")+'" data-recording-id="'+id+'"><button class="play-btn" type="button" data-play="'+id+'" aria-label="'+(active?"Pause":"Play")+' recording">'+(active?'<svg viewBox="0 0 12 12" fill="currentColor"><path d="M2 1h3v10H2zM7 1h3v10H7z"/></svg>':'<svg viewBox="0 0 12 12" fill="currentColor"><path d="M2.2 1.4c0-.7.8-1 1.4-.6l6.7 4.4a1 1 0 0 1 0 1.6l-6.7 4.4c-.6.4-1.4.1-1.4-.6V1.4Z"/></svg>')+'</button><div class="waveform" data-wave="'+id+'" title="Click to move through the call"><div class="wave-base">'+bars+'</div><div class="wave-progress" style="width:'+progress+'%">'+bars+'</div></div><span class="duration">'+durationText(active||paused?state.playback:(call.duration||0))+'/'+durationText(total)+'</span></div>';
+    }
+    function renderCalls(){
+      const list=store.calls.slice().sort(function(a,b){return Date.parse(b.at)-Date.parse(a.at)});
+      $("#call-count-label").textContent=list.length+" call attempts";
+      $("#call-list").innerHTML=list.map(function(c,index){
+        const l=store.leads.find(function(x){return x.id===c.leadId})||{name:"Lead",source:"Lead pipeline"};
+        const no=c.disposition==="No Answer",busy=c.disposition==="Busy";
+        return '<details class="call-card"><summary><div class="call-who"><span class="lead-avatar '+(index%5===2?"coral":"")+'">'+escapeHtml(initials(l.name))+'</span><span><b>'+escapeHtml(l.name)+'</b><small>'+escapeHtml(l.city)+' · '+escapeHtml(l.source)+'</small></span></div><div class="call-date">'+escapeHtml(formatDateTime(c.at))+'<small>'+escapeHtml(ago(c.at))+'</small></div><div><span class="disposition '+(no?"no-answer":busy?"busy":"")+'"><i></i>'+escapeHtml(c.disposition)+'</span><div class="call-intent">'+intentBadge(c.intent)+'</div></div><div class="recording-placeholder">'+recordingMarkup(c,false)+'</div><span class="status '+(no||busy?"":"called")+'">'+(c.duration?durationText(c.duration):"—")+'</span></summary><div class="transcript"><b>Transcript · Hindi / English / Hinglish</b><em>“'+escapeHtml(c.transcript)+'”</em><br><span>Lead outcome: '+escapeHtml(l.nextAction)+' · First contact in '+escapeHtml(c.firstContact)+'s</span></div></details>';
+      }).join("");
+    }
+    function conversations(){
+      const ids=Object.keys(store.messages);
+      return ids.map(function(id){const lead=store.leads.find(function(l){return l.id===id});if(!lead)return null;const msgs=store.messages[id]||[];return {lead:lead,messages:msgs,last:msgs[msgs.length-1]}}).filter(Boolean).sort(function(a,b){return Date.parse(b.last?.at||b.lead.receivedAt)-Date.parse(a.last?.at||a.lead.receivedAt)});
+    }
+    function conversationPreview(lead,last){
+      const message=String(last.text||"").trim(),mode=parseInt(leadReference(lead),10)%4,action=followupActionLabel(lead.nextAction);
+      let preview;
+      if(mode===0)preview="“"+message.slice(0,76)+(message.length>76?"…":"")+"”";
+      else if(mode===1)preview="Question: Would "+action.toLowerCase()+" be a good next step for "+lead.property+" in "+lead.city+"?";
+      else if(mode===2)preview="Confirmed: "+action+" for "+lead.property+" · "+lead.city;
+      else preview=(last.dir==="out"?"You: ":"Lead: ")+message.slice(0,86)+(message.length>86?"…":"");
+      return preview+" · "+lead.property+" · ref "+leadReference(lead);
+    }
+    function conversationDayLabel(date){
+      if(!date)return "TODAY";
+      const day=new Intl.DateTimeFormat("en-CA",{timeZone:"Asia/Kolkata",year:"numeric",month:"2-digit",day:"2-digit"}).format(new Date(date));
+      const today=new Intl.DateTimeFormat("en-CA",{timeZone:"Asia/Kolkata",year:"numeric",month:"2-digit",day:"2-digit"}).format(new Date());
+      const yesterday=new Intl.DateTimeFormat("en-CA",{timeZone:"Asia/Kolkata",year:"numeric",month:"2-digit",day:"2-digit"}).format(new Date(Date.now()-86400000));
+      return day===today?"TODAY":day===yesterday?"YESTERDAY":new Intl.DateTimeFormat("en-IN",{timeZone:"Asia/Kolkata",day:"numeric",month:"short",year:"numeric"}).format(new Date(date)).toUpperCase();
+    }
+    function renderWa(){
+      let rows=conversations();
+      const q=($("#wa-search").value||"").trim().toLowerCase();
+      if(q)rows=rows.filter(function(row){return row.lead.name.toLowerCase().includes(q)||row.lead.city.toLowerCase().includes(q)});
+      if(!state.selectedWa||!store.messages[state.selectedWa])state.selectedWa=rows[0]?.lead.id||null;
+      if(state.selectedWa&&store.unread[state.selectedWa]){store.unread[state.selectedWa]=false;persist()}
+      $("#nav-wa-count").textContent=Object.values(store.unread).filter(Boolean).length||"";
+      $("#wa-contact-count").textContent=rows.length+" leads";
+      $("#wa-contacts").innerHTML=rows.map(function(row){
+        const lead=row.lead,last=row.last||{text:"Conversation started",at:lead.receivedAt};
+        const preview=conversationPreview(lead,last);
+        return '<button type="button" class="wa-contact '+(state.selectedWa===lead.id?"active":"")+'" data-wa-id="'+escapeHtml(lead.id)+'"><span class="lead-avatar">'+escapeHtml(initials(lead.name))+'</span><span class="wa-contact-copy"><span class="wa-contact-top"><b>'+escapeHtml(lead.name)+'</b><time>'+escapeHtml(compactDate(last.at))+'</time></span><span class="wa-preview"><span>'+escapeHtml(preview)+'</span>'+(store.unread[lead.id]?'<i class="unread"></i>':'')+'</span></span></button>';
+      }).join("");
+      const lead=store.leads.find(function(l){return l.id===state.selectedWa});
+      if(!lead){$("#wa-chat-head").innerHTML='<span class="lead-avatar">R</span><div><b>Select a conversation</b><small>Conversation history</small></div>';$("#wa-messages").innerHTML="";return}
+      $("#wa-chat-head").innerHTML='<span class="lead-avatar">'+escapeHtml(initials(lead.name))+'</span><div><b>'+escapeHtml(lead.name)+'</b><small>'+escapeHtml(lead.phone)+' · '+escapeHtml(lead.city)+'</small></div><span class="spacer"></span><span class="wa-lock"><svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.5"><rect x="4" y="8" width="12" height="9" rx="2"/><path d="M6.5 8V5.8a3.5 3.5 0 0 1 7 0V8"/></svg>Conversation</span>';
+      const msgs=store.messages[lead.id]||[];
+      $("#wa-messages").innerHTML='<div class="wa-day">'+escapeHtml(conversationDayLabel((msgs[msgs.length-1]||{}).at))+'</div>'+msgs.map(function(m){return '<div class="bubble '+(m.dir==="out"?"out":"in")+'">'+escapeHtml(m.text)+'<div class="bubble-meta">'+escapeHtml(formatTime(m.at))+(m.dir==="out"&&m.read?'<span class="ticks">✓✓</span>':m.dir==="out"?'<span>✓✓</span>':'')+'</div></div>'}).join("");
+      $("#wa-messages").scrollTop=$("#wa-messages").scrollHeight;
+    }
+    function renderAll(){
+      renderOverview();renderLeads();renderCalls();renderWa();renderFollowups();
+    }
+    let tabSwitchTimer=null;
+    function setTab(tab){
+      const target=$("#page-"+tab);
+      let current=$$(".page.active").find(function(page){return !page.classList.contains("fading-out")})||$(".page.active");
+      if(tabSwitchTimer){clearTimeout(tabSwitchTimer);tabSwitchTimer=null}
+      $$(".page.fading-out").forEach(function(page){if(page!==current)page.classList.remove("active","fading-out")});
+      state.tab=tab;
+      $$(".nav-item").forEach(function(el){el.classList.toggle("active",el.dataset.tab===tab)});
+      if(!current||current===target){
+        $$(".page").forEach(function(page){page.classList.toggle("active",page===target);page.classList.remove("fading-out")});
+        renderTab(tab);return;
+      }
+      current.classList.add("fading-out");
+      tabSwitchTimer=setTimeout(function(){
+        current.classList.remove("active","fading-out");
+        target.classList.add("active");
+        tabSwitchTimer=null;
+        renderTab(tab);
+      },140);
+    }
+    function renderTab(tab){
+      if(tab==="overview")renderOverview();
+      if(tab==="leads")renderLeads();
+      if(tab==="calls")renderCalls();
+      if(tab==="whatsapp")renderWa();
+      if(tab==="followups")renderFollowups();
+    }
+    function addActivity(event){
+      event.id=event.id||makeId("evt");event.at=event.at||new Date().toISOString();event.isNew=true;
+      store.activity.unshift(event);store.activity=store.activity.slice(0,40);persist();
+      if(state.tab==="overview"){
+        const feed=$("#activity-feed");
+        if(feed&&feed.children.length){
+          const oldest=feed.children.length>=9?feed.lastElementChild:null;
+          if(oldest)oldest.classList.add("activity-exit");
+          feed.insertAdjacentHTML("afterbegin",activityMarkup(event,true));
+          feed.scrollTop=0;
+          setTimeout(function(){if(oldest&&oldest.parentNode===feed)oldest.remove();while(feed.children.length>9)feed.lastElementChild.remove()},400);
+        }else renderActivity();
+      }
+    }
+    const liveTemplates=[
+      function(leads){const l=leads[Math.floor(Math.random()*leads.length)];return {kind:"call",leadId:l.id,title:l.name+" — called in "+l.firstContact+"s",detail:l.disposition==="Answered"?"AI voice agent connected · "+l.intent.toLowerCase()+" intent":"No answer · follow-up path started"}},
+      function(leads){const l=leads[Math.floor(Math.random()*leads.length)];return {kind:"wa",leadId:l.id,title:"WhatsApp delivered to "+l.name,detail:"Property overview sent for "+l.property}},
+      function(leads){const due=leads.find(function(l){return l.nextAt&&l.status==="Follow-up Scheduled"})||leads[0];return {kind:"follow",leadId:due.id,title:"Follow-up scheduled: "+due.name,detail:relativeDue(due.nextAt||isoHours(20))}},
+      function(leads){const hot=leads.filter(function(x){return x.intent==="Hot"});const l=hot[Math.floor(Math.random()*hot.length)]||leads[0];return {kind:"intake",leadId:l.id,title:l.name+" — "+l.source,detail:"New enquiry received for "+l.property}}
+    ];
+    function addLiveEvent(){
+      const leads=store.leads.filter(function(l){return l.status!=="DNC"});
+      if(!leads.length){addActivity({kind:"intake",title:"Outreach paused",detail:"All current leads are marked DNC"});return}
+      const e=liveTemplates[Math.floor(Math.random()*liveTemplates.length)](leads);
+      addActivity(e);
+    }
+    function scheduleLiveEvent(){setTimeout(function(){addLiveEvent();scheduleLiveEvent()},4000+Math.floor(Math.random()*2001))}
+    function closeDrawer(){$("#drawer-backdrop").hidden=true;state.selectedLead=null}
+    function openConversation(id){
+      const lead=store.leads.find(function(l){return l.id===id});
+      if(!lead||lead.status==="DNC")return;
+      if(!store.messages[id])store.messages[id]=starterMessages(lead,store.leads.indexOf(lead));
+      persist();state.selectedWa=id;closeDrawer();setTab("whatsapp");
+    }
+    function findCall(lead){return store.calls.find(function(c){return c.leadId===lead.id})}
+    function miniMessages(lead){
+      if(lead.status==="DNC")return '<div class="mini-bubble">Outreach stopped. No WhatsApp messages are sent to DNC leads.</div>';
+      const msgs=store.messages[lead.id]||starterMessages(lead,0);
+      return msgs.slice(-4).map(function(m){return '<div class="mini-bubble '+(m.dir==="out"?"out":"")+'">'+escapeHtml(m.text)+'<time>'+escapeHtml(formatTime(m.at))+'</time></div>'}).join("");
+    }
+    function openDrawer(id){
+      const lead=store.leads.find(function(l){return l.id===id});if(!lead)return;
+      state.selectedLead=id;
+      const call=findCall(lead);
+      const timeline=[
+        ["Lead received",formatDateTime(lead.receivedAt),"From "+lead.source],
+        ["AI voice agent called",lead.firstContact+"s after enquiry",lead.disposition+" · "+(call&&call.duration?durationText(call.duration)+" conversation":"no answer")],
+        [lead.status==="DNC"?"WhatsApp suppressed":"WhatsApp sent",lead.status==="DNC"?"DNC safeguard":"In parallel",lead.status==="DNC"?"No further outreach":"Property details delivered"],
+        [lead.status==="Booked"?"Site visit booked":"Next action",lead.nextAt?relativeDue(lead.nextAt):"As interest develops",lead.nextAction]
+      ];
+      const items=timeline.map(function(t){return '<div class="timeline-row"><i class="timeline-point"></i><span><b>'+escapeHtml(t[0])+'</b><small>'+escapeHtml(t[2])+'</small></span><time>'+escapeHtml(t[1])+'</time></div>'}).join("");
+      const tags=(lead.interests||[]).map(function(t){return '<span class="soft-tag">'+escapeHtml(t)+'</span>'}).join("");
+      const objections=(lead.objections||[]).map(function(t){return '<span class="soft-tag">'+escapeHtml(t)+'</span>'}).join("");
+      $("#drawer-content").innerHTML='<div class="drawer-profile"><span class="lead-avatar">'+escapeHtml(initials(lead.name))+'</span><div class="drawer-profile-main"><h2 id="drawer-name">'+escapeHtml(lead.name)+'</h2><p>'+escapeHtml(lead.source)+' · '+escapeHtml(lead.city)+' · '+escapeHtml(formatDateTime(lead.receivedAt))+'</p><div class="drawer-badges">'+intentBadge(lead.intent)+statusBadge(lead.status)+'</div></div></div>'+
+        '<div class="drawer-details"><div class="detail-box"><span>Phone</span><b>'+escapeHtml(lead.phone)+'</b></div><div class="detail-box"><span>Property interest</span><b>'+escapeHtml(lead.property)+'</b></div><div class="detail-box"><span>Budget</span><b>'+formatBudget(lead.budget)+'</b></div><div class="detail-box"><span>Follow-up attempts</span><b>'+escapeHtml(lead.followupCount||0)+' / 5</b></div></div>'+
+        '<div class="drawer-grid"><section class="drawer-panel"><h3>Lead journey</h3><p class="drawer-panel-sub">What happened and what comes next</p><div class="timeline">'+items+'</div><div class="action-callout"><span>Next action · AI decision</span><b>'+escapeHtml(lead.nextAction)+'</b><p>'+escapeHtml(lead.summary)+'</p></div></section>'+
+        '<section class="drawer-panel"><h3>AI call summary</h3><p class="drawer-panel-sub">Qualification summary</p><div class="ai-summary"><span class="summary-label">'+escapeHtml(lead.intent)+' intent</span>'+escapeHtml(lead.summary)+'</div><div class="tag-list">'+tags+'</div><div class="tag-list">'+objections+'</div>'+
+        (call?'<div class="mini-recording">'+recordingMarkup(call,true)+'</div>':'<p class="drawer-panel-sub">No recording attached to this lead.</p>')+'</section>'+
+        '<section class="drawer-panel"><h3>WhatsApp conversation</h3><p class="drawer-panel-sub">Recent WhatsApp messages</p><div class="mini-chat">'+miniMessages(lead)+'</div>'+(lead.status==="DNC"?'<p class="drawer-panel-sub">Conversation view is unavailable while outreach is suppressed.</p>':'<div class="drawer-footer"><button class="btn btn-quiet" type="button" data-open-wa="'+escapeHtml(lead.id)+'">Open conversation →</button></div>')+'</section>'+
+        '<section class="drawer-panel"><h3>Contact policy</h3><p class="drawer-panel-sub">Follow-up automation guardrails</p><div class="ai-summary">Max 5 attempts · calling hours 9 AM–8 PM IST · DNC requests stop future outreach. This lead has '+escapeHtml(lead.followupCount||0)+' recorded attempts.</div></section></div>';
+      $("#drawer-backdrop").hidden=false;
+    }
+    function randomIntent(){
+      const r=Math.random();return r<.3?"Hot":r<.7?"Warm":"Cold";
+    }
+    function parseBudget(value){
+      if(typeof value==="number")return value;
+      let s=String(value||"").toLowerCase().replace(/[₹,\s]/g,"");
+      if(!s)return 6500000+Math.floor(Math.random()*9000000);
+      const n=parseFloat(s.replace(/[^\d.]/g,""));if(!Number.isFinite(n))return 6500000+Math.floor(Math.random()*9000000);
+      if(s.includes("cr")||s.includes("crore"))return n*10000000;
+      if(s.includes("lakh")||s.includes("lac")||/l$/.test(s))return n*100000;
+      return n<1000?n*100000:n;
+    }
+    function pickSource(value){
+      const s=String(value||"").toLowerCase();
+      const match=allowedSources.find(function(x){return x.toLowerCase()===s});
+      return match||allowedSources[Math.floor(Math.random()*allowedSources.length)];
+    }
+    function autoMap(fields,aliases){
+      const normalized=fields.map(function(f){return {raw:f,n:f.toLowerCase().replace(/[^a-z0-9]/g,"")}});
+      for(const alias of aliases){
+        const target=alias.toLowerCase().replace(/[^a-z0-9]/g,"");
+        const found=normalized.find(function(x){return x.n===target});
+        if(found)return found.raw;
+      }
+      for(const alias of aliases){
+        const target=alias.toLowerCase().replace(/[^a-z0-9]/g,"");
+        const found=normalized.find(function(x){return x.n.includes(target)||target.includes(x.n)});
+        if(found)return found.raw;
+      }
+      return "";
+    }
+    function setCsvError(message){
+      const el=$("#csv-error");el.textContent=message;el.hidden=!message;
+    }
+    function openImport(){
+      resetImport();$("#import-backdrop").hidden=false;
+    }
+    function resetImport(){
+      state.csvRows=[];state.csvFields=[];state.mapping={};state.outreachRows=[];state.outreachDone=0;
+      $("#csv-file").value="";$("#csv-mapping").hidden=true;$("#import-stage-upload").hidden=false;$("#import-stage-progress").hidden=true;
+      $("#start-outreach").hidden=false;$("#start-outreach").disabled=true;$("#finish-outreach").hidden=true;
+      $("#modal-help").textContent="Phone numbers are masked for privacy.";
+      setCsvError("");
+    }
+    function parseCsvFile(file){
+      setCsvError("");
+      if(!file||!file.name.toLowerCase().endsWith(".csv")){setCsvError("Choose a CSV file to continue.");return}
+      if(!window.Papa){setCsvError("PapaParse did not load. Check your connection and reload this HTML file.");return}
+      window.Papa.parse(file,{header:true,skipEmptyLines:"greedy",dynamicTyping:false,complete:function(result){
+        if(result.errors&&result.errors.length){setCsvError("Some rows could not be parsed. Please check the CSV formatting and try again.");return}
+        const rows=(result.data||[]).filter(function(row){return Object.values(row).some(function(v){return String(v||"").trim()})});
+        if(!rows.length){setCsvError("This CSV has no data rows.");return}
+        state.csvRows=rows;state.csvFields=result.meta.fields||Object.keys(rows[0]||{});
+        state.mapping={name:autoMap(state.csvFields,["name","fullname","leadname","customer"]),phone:autoMap(state.csvFields,["phone","mobile","contactnumber","telephone"]),city:autoMap(state.csvFields,["city","location","locality"]),budget:autoMap(state.csvFields,["budget","budgetrange","price","budgetmin"]),property:autoMap(state.csvFields,["property","propertyinterest","project","unit"]),source:autoMap(state.csvFields,["source","channel","platform","campaign"])};
+        renderCsvMapping();
+      },error:function(){setCsvError("The CSV could not be read. Please try another file.")}});
+    }
+    const mapLabels={name:"Lead name",phone:"Phone column",city:"City",budget:"Budget",property:"Property interest",source:"Source"};
+    function renderCsvMapping(){
+      $("#csv-mapping").hidden=false;$("#csv-row-count").textContent=state.csvRows.length+" rows · first 5 shown";
+      $("#map-grid").innerHTML=Object.keys(mapLabels).map(function(key){
+        const opts=['<option value="">Not mapped</option>'].concat(state.csvFields.map(function(field){return '<option value="'+escapeHtml(field)+'" '+(state.mapping[key]===field?"selected":"")+'>'+escapeHtml(field)+'</option>'}));
+        return '<div class="map-field"><label for="map-'+key+'">'+mapLabels[key]+'</label><select id="map-'+key+'" data-map="'+key+'">'+opts.join("")+'</select></div>';
+      }).join("");
+      const previewKeys=["name","city","property","budget","source"];
+      $("#preview-head").innerHTML="<tr>"+previewKeys.map(function(k){return "<th>"+mapLabels[k]+"</th>"}).join("")+"<th>Phone</th></tr>";
+      $("#preview-body").innerHTML=state.csvRows.slice(0,5).map(function(row){
+        return "<tr>"+previewKeys.map(function(k){return "<td>"+escapeHtml(state.mapping[k]?row[state.mapping[k]]||"—":"—")+"</td>"}).join("")+"<td>Phone number masked</td></tr>";
+      }).join("");
+      $("#start-outreach").disabled=!state.mapping.name;
+      $("#modal-help").textContent=state.mapping.name?"Phone numbers are masked throughout the workspace.":"Map a lead name column to continue.";
+      setCsvError("");
+    }
+    function csvLead(row,index){
+      const get=function(k){return state.mapping[k]?String(row[state.mapping[k]]||"").trim():""};
+      const name=get("name")||"New lead "+(index+1);
+      const intent=randomIntent();
+      const callDisposition=Math.random()<.82?"Answered":Math.random()<.7?"No Answer":"Busy";
+      const action=intent==="Hot"?(Math.random()<.72?"Book site visit":"Call back"):intent==="Warm"?(Math.random()<.55?"Send brochure":"Call back"):(Math.random()<.6?"Nurture":"Drop");
+      const booked=intent==="Hot"&&action==="Book site visit"&&Math.random()<.45;
+      const lead={id:makeId("lead"),name:name,city:get("city")||["Pune","Bangalore","Mumbai","Gurgaon"][index%4],property:get("property")||"Residential enquiry",budget:parseBudget(get("budget")),source:pickSource(get("source")),intent:"Warm",status:"New",receivedAt:new Date().toISOString(),nextAt:scheduleWithinCallingWindow(new Date(Date.now()+(18+index%20)*3600000)),firstContact:Number((.9+Math.random()*.8).toFixed(1)),disposition:callDisposition,nextAction:action,summary:"",objections:["Price comparison"],interests:["Floor plan","Location"],followupCount:0,phone:maskedPhone(store.leads.length+index),callId:makeId("call"),whatsappStatus:"Queued",_stage:"Queued"};
+      lead.summary=summaryForLead(lead,"Imported from CSV; qualifying "+formatBudget(lead.budget)+" for "+lead.property+" in "+lead.city+".");
+      lead.summaryTemplateVersion=4;
+      return {lead:lead,finalIntent:intent,finalAction:action,booked:booked,callDisposition:callDisposition};
+    }
+    function updateOutreachRow(id,stage,dial){
+      const row=state.outreachRows.find(function(x){return x.lead.id===id});if(!row)return;
+      row.stage=stage;if(dial)row.dial=dial;
+      const element=$('[data-outreach-id="'+id+'"]');
+      if(element){const stageEl=$(".outreach-stage",element);if(stageEl){stageEl.textContent=stage;stageEl.classList.toggle("done",stage==="Complete"||stage==="WhatsApp sent"||stage==="AI classifying…")};const dialEl=$("small",element);if(dialEl&&dial)dialEl.textContent="First contact "+dial+"s"}
+    }
+    function renderOutreachRows(){
+      $("#outreach-rows").innerHTML=state.outreachRows.map(function(row){return '<div class="outreach-row" data-outreach-id="'+escapeHtml(row.lead.id)+'"><b>'+escapeHtml(row.lead.name)+'</b><span class="outreach-stage">'+escapeHtml(row.stage||"Queued")+'</span><small>'+(row.dial?"Dial "+row.dial+"s":"Queued")+'</small></div>'}).join("");
+    }
+    function runOutreach(){
+      if(!state.csvRows.length||!state.mapping.name)return;
+      const additions=state.csvRows.map(csvLead);
+      state.outreachRows=additions.map(function(item){return {lead:item.lead,stage:"Queued",dial:""}});
+      state.outreachDone=0;
+      $("#import-stage-upload").hidden=true;$("#import-stage-progress").hidden=false;$("#start-outreach").hidden=true;$("#finish-outreach").hidden=true;
+      $("#outreach-fast").textContent="First contact target < 2s";
+      renderOutreachRows();
+      additions.forEach(function(item,index){
+        const lead=item.lead;
+        store.leads.unshift(lead);
+        const offset=index*95;
+        setTimeout(function(){lead._stage="Calling…";updateOutreachRow(lead.id,"Calling…");$("#outreach-fast").textContent="First contact in "+lead.firstContact+"s · under 2-second target";persist();renderLeads()},offset+180);
+        setTimeout(function(){lead.callStatus=item.callDisposition;updateOutreachRow(lead.id,item.callDisposition);persist()},offset+620);
+        setTimeout(function(){if(item.finalAction==="Drop"){lead.whatsappStatus="Suppressed · DNC";updateOutreachRow(lead.id,"WhatsApp suppressed · DNC");persist();return}lead.whatsappStatus="Sent";store.messages[lead.id]=starterMessages(lead,store.leads.indexOf(lead));updateOutreachRow(lead.id,"WhatsApp sent");addActivity({kind:"wa",leadId:lead.id,title:"WhatsApp delivered to "+lead.name,detail:"Property details for "+lead.property+" in "+lead.city+""});persist()},offset+850);
+        setTimeout(function(){lead._stage="AI classifying…";updateOutreachRow(lead.id,"AI classifying…");persist()},offset+1080);
+        setTimeout(function(){
+          lead.intent=item.finalIntent;lead.nextAction=item.finalAction;lead.status=item.booked?"Booked":item.finalAction==="Drop"?"DNC":item.callDisposition==="Answered"?"Called":"Follow-up Scheduled";
+          lead.nextAt=lead.status==="Booked"||lead.status==="DNC"?null:scheduleWithinCallingWindow(new Date(Date.now()+(8+index%34)*3600000));lead.summary=summaryForLead(lead,lead.status==="DNC"?"Marked for no further outreach; future calls and WhatsApp follow-ups are stopped.":item.callDisposition+" call result; next step is "+followupActionLabel(lead.nextAction)+".");lead.summaryTemplateVersion=4;
+          lead._stage="Complete";lead.callId=makeId("call");lead.whatsappStatus=lead.status==="DNC"?"Suppressed · DNC":"Sent";
+          if(lead.status==="DNC"){delete store.messages[lead.id];store.unread[lead.id]=false}else{store.messages[lead.id]=starterMessages(lead,index)}
+          const call={id:lead.callId,leadId:lead.id,at:new Date().toISOString(),duration:item.callDisposition==="Answered"?60+Math.floor(Math.random()*190):0,disposition:item.callDisposition,intent:lead.intent,firstContact:lead.firstContact,transcript:transcriptForLead(lead,index)};
+          store.calls.unshift(call);store.calls=store.calls.slice(0,100);state.outreachDone++;
+          updateOutreachRow(lead.id,"Complete",lead.firstContact);addActivity({kind:"call",leadId:lead.id,title:lead.name+" — called in "+lead.firstContact+"s",detail:item.callDisposition+" · "+lead.intent.toLowerCase()+" intent"});
+          persist();renderMetrics();renderDonut();renderSourcePerformance();renderLeads();renderFollowups();$("#outreach-count").textContent=state.outreachDone+" of "+additions.length+" leads completed";
+          $("#outreach-progress-bar").style.width=(state.outreachDone/additions.length*100)+"%";
+          if(state.outreachDone===additions.length){$("#outreach-fast").textContent="Average first contact "+(additions.reduce(function(sum,x){return sum+x.lead.firstContact},0)/additions.length).toFixed(1)+"s";$("#finish-outreach").hidden=false;$("#modal-help").textContent="Outreach complete · leads added to the workspace.";renderCalls();renderWa()}
+        },offset+1460);
+      });
+      $("#outreach-count").textContent="0 of "+additions.length+" leads completed";
+    }
+    function togglePlay(id){
+      if(state.playingId===id){freezeWaveform(id);state.pausedId=id;state.playingId=null}
+      else{if(state.playingId)freezeWaveform(state.playingId);if(state.pausedId!==id)state.playback=0;state.playingId=id;state.pausedId=null}
+      renderCalls();if(state.selectedLead)openDrawer(state.selectedLead);
+    }
+    function freezeWaveform(id){
+      const root=$$("[data-recording-id]").find(function(el){return el.dataset.recordingId===id});
+      if(!root)return;
+      const heights=$$(".wave-base .wavebar",root).map(function(bar){return Math.max(3,Math.round(bar.getBoundingClientRect().height))});
+      if(heights.length)waveformHeights.set(id,heights);
+    }
+    function updatePlaybackUI(call){
+      const total=Math.max(1,call.duration||1),progress=Math.max(0,Math.min(100,state.playback/total*100));
+      $$("[data-recording-id]").filter(function(root){return root.dataset.recordingId===call.id}).forEach(function(root){
+        const fill=$(".wave-progress",root),duration=$(".duration",root);
+        if(fill)fill.style.width=progress+"%";
+        if(duration)duration.textContent=durationText(state.playback)+"/"+durationText(total);
+      });
+    }
+    let playbackTimer=null;
+    function tickPlayback(){
+      if(playbackTimer)clearInterval(playbackTimer);
+      playbackTimer=setInterval(function(){
+        if(!state.playingId){clearInterval(playbackTimer);playbackTimer=null;return}
+        const call=store.calls.find(function(c){return c.id===state.playingId});
+        if(!call||!call.duration){state.playingId=null;state.pausedId=null;state.playback=0;renderCalls();return}
+        state.playback=Math.min(call.duration,state.playback+.25);updatePlaybackUI(call);
+        if(state.playback>=call.duration){state.playingId=null;state.pausedId=null;state.playback=0;clearInterval(playbackTimer);playbackTimer=null;renderCalls();if(state.selectedLead)openDrawer(state.selectedLead)}
+      },250);
+    }
+
+    document.addEventListener("click",function(event){
+      const followupAction=event.target.closest("[data-followup-action]");
+      if(followupAction){if(followupAction.dataset.followupAction==="contact")markFollowupContacted(followupAction.dataset.followupId);if(followupAction.dataset.followupAction==="snooze")snoozeFollowup(followupAction.dataset.followupId);return}
+      const tab=event.target.closest("[data-tab]");if(tab){setTab(tab.dataset.tab);return}
+      const go=event.target.closest("[data-go]");if(go){setTab(go.dataset.go);return}
+      const chartLead=event.target.closest("[data-chart-lead]");if(chartLead){openDrawer(chartLead.dataset.chartLead);return}
+      const row=event.target.closest("[data-lead-id]");if(row){openDrawer(row.dataset.leadId);return}
+      const wa=event.target.closest("[data-wa-id]");if(wa){state.selectedWa=wa.dataset.waId;renderWa();return}
+      const play=event.target.closest("[data-play]");if(play){event.stopPropagation();togglePlay(play.dataset.play);tickPlayback();return}
+      const openWa=event.target.closest("[data-open-wa]");if(openWa){openConversation(openWa.dataset.openWa);return}
+      if(event.target.closest("[data-close-import]")){$("#import-backdrop").hidden=true;return}
+      if(event.target.id==="import-backdrop"){$("#import-backdrop").hidden=true;return}
+      if(event.target.id==="drawer-backdrop"||event.target.id==="close-drawer"){closeDrawer();return}
+    });
+    $("#lead-filters").addEventListener("click",function(event){
+      const chip=event.target.closest("[data-filter]");if(!chip)return;state.filter=chip.dataset.filter;
+      $$(".filter-chip").forEach(function(el){el.classList.toggle("active",el===chip)});renderLeads();
+    });
+    $("#analytics-source").addEventListener("change",renderAnalytics);
+    $("#analytics-modes").addEventListener("click",function(event){
+      const button=event.target.closest("[data-analytics-mode]");if(!button)return;
+      state.analyticsMode=button.dataset.analyticsMode;
+      $$("[data-analytics-mode]").forEach(function(item){const active=item===button;item.classList.toggle("active",active);item.setAttribute("aria-pressed",String(active))});
+      renderAnalytics();
+    });
+    $("#lead-search").addEventListener("input",function(event){state.search=event.target.value;renderLeads()});
+    $("#wa-search").addEventListener("input",renderWa);
+    $("#open-import").addEventListener("click",openImport);
+    $("#choose-csv").addEventListener("click",function(){$("#csv-file").click()});
+    $("#csv-file").addEventListener("change",function(event){parseCsvFile(event.target.files[0])});
+    $("#drop-zone").addEventListener("dragover",function(event){event.preventDefault();$("#drop-zone").classList.add("dragover")});
+    $("#drop-zone").addEventListener("dragleave",function(){$("#drop-zone").classList.remove("dragover")});
+    $("#drop-zone").addEventListener("drop",function(event){event.preventDefault();$("#drop-zone").classList.remove("dragover");parseCsvFile(event.dataTransfer.files[0])});
+    $("#map-grid").addEventListener("change",function(event){const select=event.target.closest("[data-map]");if(!select)return;state.mapping[select.dataset.map]=select.value;renderCsvMapping()});
+    $("#start-outreach").addEventListener("click",runOutreach);
+    $("#finish-outreach").addEventListener("click",function(){$("#import-backdrop").hidden=true;setTab("leads");renderAll()});
+    $("#overview-refresh").addEventListener("click",function(){renderOverview()});
+    $("#wa-compose").addEventListener("submit",function(event){
+      event.preventDefault();const input=$("#wa-compose-input"),text=input.value.trim();if(!text||!state.selectedWa)return;
+      const list=store.messages[state.selectedWa]||(store.messages[state.selectedWa]=[]);
+      list.push({dir:"out",text:text,at:new Date().toISOString(),read:false});input.value="";persist();renderWa();
+    });
+    $("#call-list").addEventListener("click",function(event){
+      const wave=event.target.closest("[data-wave]");if(!wave)return;
+      const call=store.calls.find(function(c){return c.id===wave.dataset.wave});if(!call||!call.duration)return;
+      const rect=wave.getBoundingClientRect();const pct=Math.max(0,Math.min(1,(event.clientX-rect.left)/rect.width));state.playingId=call.id;state.pausedId=null;state.playback=pct*call.duration;renderCalls();tickPlayback();
+    });
+    document.addEventListener("keydown",function(event){
+      if(event.key==="Escape"){$("#import-backdrop").hidden=true;closeDrawer()}
+      const chartLead=event.target.closest&&event.target.closest("[data-chart-lead]");
+      if(chartLead&&(event.key==="Enter"||event.key===" ")){event.preventDefault();openDrawer(chartLead.dataset.chartLead)}
+      if((event.key==="Enter"||event.key===" ")&&event.target.matches("[data-lead-id][role=button]")){event.preventDefault();openDrawer(event.target.dataset.leadId)}
+    });
+    renderAll();
+    scheduleLiveEvent();
+    setInterval(function(){if(state.tab==="overview")renderMetrics()},30000);
+  })();
+  </script>
+</body>
+</html>
